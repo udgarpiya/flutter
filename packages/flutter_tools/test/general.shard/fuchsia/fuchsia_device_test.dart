@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dds/dds.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/application_package.dart';
 import 'package:flutter_tools/src/artifacts.dart';
@@ -690,9 +691,13 @@ void main() {
 
   group('FuchsiaIsolateDiscoveryProtocol', () {
     MockPortForwarder portForwarder;
+    MockDartDevelopmentService dds;
 
     setUp(() {
       portForwarder = MockPortForwarder();
+      dds = MockDartDevelopmentService(
+          Uri.parse('http://${InternetAddress.loopbackIPv4.address}:0/')
+        );
     });
 
     Future<Uri> findUri(List<FlutterView> views, String expectedIsolateName) async {
@@ -716,6 +721,7 @@ void main() {
         fuchsiaDevice,
         expectedIsolateName,
         (Uri uri) async => fakeVmServiceHost.vmService,
+        (Uri _, Uri __) async => dds,
         true, // only poll once.
       );
 
@@ -751,7 +757,7 @@ void main() {
       ], expectedIsolateName);
 
       expect(
-          uri.toString(), 'http://${InternetAddress.loopbackIPv4.address}:0/');
+          uri.toString(), dds.uri.toString());
     });
 
     testUsingContext('can handle flutter view without matching isolate name', () async {
@@ -1539,3 +1545,10 @@ class MockFuchsiaSdk extends Mock implements FuchsiaSdk {
 }
 
 class MockFuchsiaWorkflow extends Mock implements FuchsiaWorkflow {}
+
+class MockDartDevelopmentService extends Mock implements DartDevelopmentService {
+  MockDartDevelopmentService(this.uri);
+
+  @override
+  final Uri uri;
+}
