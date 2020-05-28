@@ -10,6 +10,7 @@ import '../android/android_device.dart';
 import '../artifacts.dart';
 import '../base/common.dart';
 import '../base/context.dart';
+import '../base/dds.dart';
 import '../base/file_system.dart';
 import '../base/io.dart';
 import '../cache.dart';
@@ -357,9 +358,15 @@ class AttachCommand extends FlutterCommand {
       targetModel: TargetModel(stringArg('target-model')),
       buildInfo: getBuildInfo(),
     );
-    flutterDevice.observatoryUris = observatoryUris;
-    final List<FlutterDevice> flutterDevices =  <FlutterDevice>[flutterDevice];
+
     final DebuggingOptions debuggingOptions = DebuggingOptions.enabled(getBuildInfo());
+    flutterDevice.observatoryUris = await DartDevelopmentService.startDartDevelopmentService(
+      await observatoryUris.first,
+      debuggingOptions.hostVmServicePort,
+      debuggingOptions.disableServiceAuthCodes,
+      usesIpv6,
+    );
+    final List<FlutterDevice> flutterDevices =  <FlutterDevice>[flutterDevice];
 
     return getBuildInfo().isDebug
       ? hotRunnerFactory.build(
