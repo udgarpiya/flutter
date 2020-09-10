@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -719,7 +722,7 @@ void main() {
       equalsIgnoringHashCodes(
         'Duplicate keys found.\n'
         'If multiple keyed nodes exist as children of another node, they must have unique keys.\n'
-        'Stack(alignment: AlignmentDirectional.topStart, textDirection: ltr, fit: loose, overflow: clip) has multiple children with key [GlobalKey#00000 problematic].'
+        'Stack(alignment: AlignmentDirectional.topStart, textDirection: ltr, fit: loose) has multiple children with key [GlobalKey#00000 problematic].'
       ),
     );
   });
@@ -889,7 +892,7 @@ void main() {
         'The specific parent that did not update after having one or more children forcibly '
         'removed due to GlobalKey reparenting is:\n'
         '- Stack(alignment: AlignmentDirectional.topStart, textDirection: ltr, fit: loose, '
-        'overflow: clip, renderObject: RenderStack#00000)\n'
+        'renderObject: RenderStack#00000)\n'
         'A GlobalKey can only be specified on one widget at a time in the widget tree.'
       ),
     );
@@ -1024,7 +1027,7 @@ void main() {
     );
   });
 
-  testWidgets('GlobalKey - dettach and re-attach child to different parents', (WidgetTester tester) async {
+  testWidgets('GlobalKey - detach and re-attach child to different parents', (WidgetTester tester) async {
     await tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
       child: Center(
@@ -1057,6 +1060,52 @@ void main() {
     });
     element.removeChild(childElement.renderObject as RenderBox);
     element.createChild(0, after: null);
+  });
+
+  testWidgets('GlobalKey - re-attach child to new parents, and the old parent is deactivated(unmounted)', (WidgetTester tester) async {
+    // This is a regression test for https://github.com/flutter/flutter/issues/62055
+    const Key key1 = GlobalObjectKey('key1');
+    const Key key2 = GlobalObjectKey('key2');
+    StateSetter setState;
+    int tabBarViewCnt = 2;
+    TabController tabController = TabController(length: tabBarViewCnt, vsync: const TestVSync(),);
+
+    await tester.pumpWidget(Directionality(
+      textDirection: TextDirection.ltr,
+      child: StatefulBuilder(
+        builder: (BuildContext context, StateSetter setter) {
+          setState = setter;
+          return TabBarView(
+            controller: tabController,
+            children: <Widget>[
+              if (tabBarViewCnt > 0) const Text('key1', key: key1,),
+              if (tabBarViewCnt > 1) const Text('key2', key: key2,),
+            ],
+          );
+        },
+      ),
+    ));
+
+    expect(tabController.index, 0);
+
+    // switch tabs 0 -> 1
+    setState((){
+      tabController.index = 1;
+    });
+
+    await tester.pump(const Duration(seconds: 1)); // finish the animation
+
+    expect(tabController.index, 1);
+
+    // rebuild TabBarView that only have the 1st page with GlobalKey 'key1'
+    setState((){
+      tabBarViewCnt = 1;
+      tabController = TabController(length: tabBarViewCnt, vsync: const TestVSync(),);
+    });
+
+    await tester.pump(const Duration(seconds: 1)); // finish the animation
+
+    expect(tabController.index, 0);
   });
 
   testWidgets('Defunct setState throws exception', (WidgetTester tester) async {
@@ -1345,10 +1394,10 @@ void main() {
             onBuild: (BuildContext context) {
               debugDoingBuildOnBuild = context.debugDoingBuild;
             },
-            onDispose: (BuildContext contex) {
+            onDispose: (BuildContext context) {
               debugDoingBuildOnDispose = context.debugDoingBuild;
             },
-            onDeactivate: (BuildContext contex) {
+            onDeactivate: (BuildContext context) {
               debugDoingBuildOnDeactivate = context.debugDoingBuild;
             },
           ),
@@ -1383,7 +1432,7 @@ void main() {
             return Inherited(value, child: child);
           },
           child: RenderObjectWidgetSpy(
-            onCreateRenderObjet: (BuildContext context) {
+            onCreateRenderObject: (BuildContext context) {
               spyContext = context;
               context.dependOnInheritedWidgetOfExactType<Inherited>();
               debugDoingBuildOnCreateRenderObject = context.debugDoingBuild;
@@ -1391,7 +1440,7 @@ void main() {
             onUpdateRenderObject: (BuildContext context) {
               debugDoingBuildOnUpdateRenderObject = context.debugDoingBuild;
             },
-            onDidUmountRenderObject: () {
+            onDidUnmountRenderObject: () {
               debugDoingBuildOnDidUnmountRenderObject = spyContext.debugDoingBuild;
             },
           ),
@@ -1771,18 +1820,18 @@ class _StatefulWidgetSpyState extends State<StatefulWidgetSpy> {
 class RenderObjectWidgetSpy extends LeafRenderObjectWidget {
   const RenderObjectWidgetSpy({
     Key key,
-    this.onCreateRenderObjet,
+    this.onCreateRenderObject,
     this.onUpdateRenderObject,
-    this.onDidUmountRenderObject,
+    this.onDidUnmountRenderObject,
   })  : super(key: key);
 
-  final void Function(BuildContext) onCreateRenderObjet;
+  final void Function(BuildContext) onCreateRenderObject;
   final void Function(BuildContext) onUpdateRenderObject;
-  final void Function() onDidUmountRenderObject;
+  final void Function() onDidUnmountRenderObject;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    onCreateRenderObjet?.call(context);
+    onCreateRenderObject?.call(context);
     return FakeLeafRenderObject();
   }
 
@@ -1794,7 +1843,7 @@ class RenderObjectWidgetSpy extends LeafRenderObjectWidget {
   @override
   void didUnmountRenderObject(RenderObject renderObject) {
     super.didUnmountRenderObject(renderObject);
-    onDidUmountRenderObject?.call();
+    onDidUnmountRenderObject?.call();
   }
 }
 

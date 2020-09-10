@@ -4,6 +4,7 @@
 
 import 'dart:async';
 
+import 'package:archive/archive.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/android/android_sdk.dart';
 import 'package:flutter_tools/src/android/android_studio.dart';
@@ -323,7 +324,7 @@ void main() {
       expect(() {
         updateLocalProperties(project: FlutterProject.current());
       }, throwsToolExit(
-        message: '$warningMark No Android SDK found. Try setting the ANDROID_HOME environment variable.',
+        message: '$warningMark No Android SDK found. Try setting the ANDROID_SDK_ROOT environment variable.',
       ));
     }, overrides: <Type, Generator>{
       AndroidSdk: () => null,
@@ -391,7 +392,7 @@ include ':app'
           'flutter_tools',
           'gradle');
       globals.fs.directory(toolGradlePath).createSync(recursive: true);
-      globals.fs.file(globals.fs.path.join(toolGradlePath, 'deprecated_settings.gradle'))
+      globals.fs.file(globals.fs.path.join(toolGradlePath, 'settings.gradle.legacy_versions'))
           .writeAsStringSync(currentSettingsGradle);
 
       globals.fs.file(globals.fs.path.join(toolGradlePath, 'settings_aar.gradle.tmpl'))
@@ -424,7 +425,7 @@ include ':app'
           'flutter_tools',
           'gradle');
       globals.fs.directory(toolGradlePath).createSync(recursive: true);
-      globals.fs.file(globals.fs.path.join(toolGradlePath, 'deprecated_settings.gradle'))
+      globals.fs.file(globals.fs.path.join(toolGradlePath, 'settings.gradle.legacy_versions'))
           .writeAsStringSync(currentSettingsGradle);
 
       globals.fs.file(globals.fs.path.join(toolGradlePath, 'settings_aar.gradle.tmpl'))
@@ -932,8 +933,7 @@ plugin1=${plugin1.path}
   });
 
   group('gradle build', () {
-    final Usage mockUsage = MockUsage();
-
+    Usage mockUsage;
     MockAndroidSdk mockAndroidSdk;
     MockAndroidStudio mockAndroidStudio;
     MockLocalEngineArtifacts mockArtifacts;
@@ -944,6 +944,7 @@ plugin1=${plugin1.path}
     Cache cache;
 
     setUp(() {
+      mockUsage = MockUsage();
       fileSystem = MemoryFileSystem();
       fileSystemUtils = MockFileSystemUtils();
       mockAndroidSdk = MockAndroidSdk();
@@ -1336,6 +1337,89 @@ plugin1=${plugin1.path}
         any,
         label: 'gradle-random-event-label-success',
         parameters: anyNamed('parameters'),
+      )).called(1);
+    }, overrides: <Type, Generator>{
+      AndroidSdk: () => mockAndroidSdk,
+      Cache: () => cache,
+      FileSystem: () => fileSystem,
+      Platform: () => android,
+      ProcessManager: () => mockProcessManager,
+      Usage: () => mockUsage,
+    });
+
+    testUsingContext('performs code size analyis and sends analytics', () async {
+      when(mockProcessManager.start(any,
+        workingDirectory: anyNamed('workingDirectory'),
+        environment: anyNamed('environment')))
+      .thenAnswer((_) {
+        return Future<Process>.value(createMockProcess(
+          exitCode: 0,
+          stdout: 'irrelevant',
+        ));
+      });
+
+      fileSystem.directory('android')
+        .childFile('build.gradle')
+        .createSync(recursive: true);
+
+      fileSystem.directory('android')
+        .childFile('gradle.properties')
+        .createSync(recursive: true);
+
+      fileSystem.directory('android')
+        .childDirectory('app')
+        .childFile('build.gradle')
+        ..createSync(recursive: true)
+        ..writeAsStringSync('apply from: irrelevant/flutter.gradle');
+
+      final Archive archive = Archive()
+        ..addFile(ArchiveFile('AndroidManifest.xml', 100,  List<int>.filled(100, 0)))
+        ..addFile(ArchiveFile('META-INF/CERT.RSA', 10,  List<int>.filled(10, 0)))
+        ..addFile(ArchiveFile('META-INF/CERT.SF', 10,  List<int>.filled(10, 0)))
+        ..addFile(ArchiveFile('lib/arm64-v8a/libapp.so', 50,  List<int>.filled(50, 0)))
+        ..addFile(ArchiveFile('lib/arm64-v8a/libflutter.so', 50, List<int>.filled(50, 0)));
+
+      fileSystem.directory('build')
+        .childDirectory('app')
+        .childDirectory('outputs')
+        .childDirectory('flutter-apk')
+        .childFile('app-release.apk')
+        ..createSync(recursive: true)
+        ..writeAsBytesSync(ZipEncoder().encode(archive));
+
+      fileSystem.file('foo/snapshot.arm64-v8a.json')
+        ..createSync(recursive: true)
+        ..writeAsStringSync(r'''[
+{
+  "l": "dart:_internal",
+  "c": "SubListIterable",
+  "n": "[Optimized] skip",
+  "s": 2400
+}
+]''');
+      fileSystem.file('foo/trace.arm64-v8a.json')
+        ..createSync(recursive: true)
+        ..writeAsStringSync('{}');
+
+      await buildGradleApp(
+        project: FlutterProject.current(),
+        androidBuildInfo: const AndroidBuildInfo(
+          BuildInfo(
+            BuildMode.release,
+            null,
+            treeShakeIcons: false,
+            codeSizeDirectory: 'foo',
+          ),
+          targetArchs: <AndroidArch>[AndroidArch.arm64_v8a],
+        ),
+        target: 'lib/main.dart',
+        isBuildingBundle: false,
+        localGradleErrors: <GradleHandledError>[],
+      );
+
+      verify(mockUsage.sendEvent(
+        'code-size-analysis',
+        'apk',
       )).called(1);
     }, overrides: <Type, Generator>{
       AndroidSdk: () => mockAndroidSdk,
@@ -2483,6 +2567,18 @@ plugin1=${plugin1.path}
         )
       );
     });
+  });
+
+  test('Current settings.gradle is in our legacy settings.gradle file set', () {
+    // If this test fails, you probably edited templates/app/android.tmpl.
+    // That's fine, but you now need to add a copy of that file to gradle/settings.gradle.legacy_versions, separated
+    // from the previous versions by a line that just says ";EOF".
+    final File templateSettingsDotGradle = globals.fs.file(globals.fs.path.join(Cache.flutterRoot, 'packages', 'flutter_tools', 'templates', 'app', 'android.tmpl', 'settings.gradle'));
+    final File legacySettingsDotGradleFiles = globals.fs.file(globals.fs.path.join(Cache.flutterRoot, 'packages','flutter_tools', 'gradle', 'settings.gradle.legacy_versions'));
+    expect(
+      legacySettingsDotGradleFiles.readAsStringSync().split(';EOF').map<String>((String body) => body.trim()),
+      contains(templateSettingsDotGradle.readAsStringSync().trim()),
+    );
   });
 }
 

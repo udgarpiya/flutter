@@ -26,21 +26,6 @@ SET pub_cache_path=%FLUTTER_ROOT%\.pub-cache
 SET dart=%dart_sdk_path%\bin\dart.exe
 SET pub=%dart_sdk_path%\bin\pub.bat
 
-REM If available, add location of bundled mingit to PATH
-SET mingit_path=%FLUTTER_ROOT%\bin\mingit\cmd
-IF EXIST "%mingit_path%" SET PATH=%PATH%;%mingit_path%
-
-REM Test if Git is available on the Host
-where /q git || ECHO Error: Unable to find git in your PATH. && EXIT /B 1
-REM  Test if the flutter directory is a git clone, otherwise git rev-parse HEAD would fail
-IF NOT EXIST "%flutter_root%\.git" (
-  ECHO Error: The Flutter directory is not a clone of the GitHub project.
-  ECHO        The flutter tool requires Git in order to operate properly;
-  ECHO        to set up Flutter, run the following command:
-  ECHO        git clone -b stable https://github.com/flutter/flutter.git
-  EXIT /B 1
-)
-
 REM Detect which PowerShell executable is available on the Host
 REM PowerShell version <= 5: PowerShell.exe
 REM PowerShell version >= 6: pwsh.exe
@@ -107,7 +92,13 @@ GOTO :after_subroutine
     SET update_dart_bin=%FLUTTER_ROOT%/bin/internal/update_dart_sdk.ps1
     REM Escape apostrophes from the executable path
     SET "update_dart_bin=!update_dart_bin:'=''!"
-    %powershell_executable% -ExecutionPolicy Bypass -Command "Unblock-File -Path '%update_dart_bin%'; & '%update_dart_bin%'"
+    REM PowerShell command must have exit code set in order to prevent all non-zero exit codes from being translated
+    REM into 1. The exit code 2 is used to detect the case where the major version is incorrect and there should be
+    REM no subsequent retries.
+    %powershell_executable% -ExecutionPolicy Bypass -Command "Unblock-File -Path '%update_dart_bin%'; & '%update_dart_bin%'; exit $LASTEXITCODE;"
+    IF "%ERRORLEVEL%" EQU "2" (
+      EXIT 1
+    )
     IF "%ERRORLEVEL%" NEQ "0" (
       ECHO Error: Unable to update Dart SDK. Retrying...
       timeout /t 5 /nobreak
@@ -173,3 +164,6 @@ GOTO :after_subroutine
   EXIT /B
 
 :after_subroutine
+
+:final_exit
+  EXIT /B %exit_code%

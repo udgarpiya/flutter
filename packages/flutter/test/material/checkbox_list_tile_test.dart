@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 
@@ -115,7 +117,7 @@ void main() {
     expect(Focus.of(childKey.currentContext, nullOk: true).hasPrimaryFocus, isFalse);
   });
 
-  testWidgets('CheckoxListTile contentPadding test', (WidgetTester tester) async {
+  testWidgets('CheckboxListTile contentPadding test', (WidgetTester tester) async {
     await tester.pumpWidget(
       wrap(
         child: const Center(
@@ -146,7 +148,8 @@ void main() {
   });
 
   testWidgets('CheckboxListTile tristate test', (WidgetTester tester) async {
-    bool _value;
+    bool _value = false;
+    bool _tristate = false;
 
     await tester.pumpWidget(
       Material(
@@ -155,7 +158,7 @@ void main() {
             return wrap(
               child: CheckboxListTile(
                 title: const Text('Title'),
-                tristate: true,
+                tristate: _tristate,
                 value: _value,
                 onChanged: (bool value) {
                   setState(() {
@@ -169,12 +172,33 @@ void main() {
       ),
     );
 
-    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, null);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, false);
+
+    // Tap the checkbox when tristate is disabled.
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    expect(_value, true);
 
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
     expect(_value, false);
 
+    // Tap the listTile when tristate is disabled.
+    await tester.tap(find.byType(ListTile));
+    await tester.pumpAndSettle();
+    expect(_value, true);
+
+    await tester.tap(find.byType(ListTile));
+    await tester.pumpAndSettle();
+    expect(_value, false);
+
+    // Enable tristate
+    _tristate = true;
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, false);
+
+    // Tap the checkbox when tristate is enabled.
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
     expect(_value, true);
@@ -182,5 +206,22 @@ void main() {
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
     expect(_value, null);
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    expect(_value, false);
+
+    // Tap the listTile when tristate is enabled.
+    await tester.tap(find.byType(ListTile));
+    await tester.pumpAndSettle();
+    expect(_value, true);
+
+    await tester.tap(find.byType(ListTile));
+    await tester.pumpAndSettle();
+    expect(_value, null);
+
+    await tester.tap(find.byType(ListTile));
+    await tester.pumpAndSettle();
+    expect(_value, false);
   });
 }

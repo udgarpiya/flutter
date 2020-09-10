@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'package:flutter/widgets.dart';
 
 import 'checkbox.dart';
@@ -16,6 +18,8 @@ import 'theme_data.dart';
 ///
 /// The entire list tile is interactive: tapping anywhere in the tile toggles
 /// the checkbox.
+///
+/// {@youtube 560 315 https://www.youtube.com/watch?v=RkSqPAn9szs}
 ///
 /// The [value], [onChanged], [activeColor] and [checkColor] properties of this widget are
 /// identical to the similarly-named properties on the [Checkbox] widget.
@@ -378,6 +382,21 @@ class CheckboxListTile extends StatelessWidget {
   /// If tristate is false (the default), [value] must not be null.
   final bool tristate;
 
+  void _handleValueChange() {
+    assert(onChanged != null);
+    switch (value) {
+      case false:
+        onChanged(true);
+        break;
+      case true:
+        onChanged(tristate ? null : false);
+        break;
+      default: // case null:
+        onChanged(false);
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Widget control = Checkbox(
@@ -412,7 +431,7 @@ class CheckboxListTile extends StatelessWidget {
           isThreeLine: isThreeLine,
           dense: dense,
           enabled: onChanged != null,
-          onTap: onChanged != null ? () { onChanged(!value); } : null,
+          onTap: onChanged != null ? _handleValueChange : null,
           selected: selected,
           autofocus: autofocus,
           contentPadding: contentPadding,

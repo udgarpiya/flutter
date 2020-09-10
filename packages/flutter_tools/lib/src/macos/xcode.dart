@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:meta/meta.dart';
 import 'package:process/process.dart';
+import 'package:vm_service/vm_service_io.dart' as vm_service_io;
 
 import '../artifacts.dart';
 import '../base/common.dart';
@@ -20,12 +21,14 @@ import '../convert.dart';
 import '../globals.dart' as globals;
 import '../ios/devices.dart';
 import '../ios/ios_deploy.dart';
+import '../ios/iproxy.dart';
 import '../ios/mac.dart';
 import '../ios/xcodeproj.dart';
 import '../reporting/reporting.dart';
 
 const int kXcodeRequiredVersionMajor = 11;
 const int kXcodeRequiredVersionMinor = 0;
+const int kXcodeRequiredVersionPatch = 0;
 
 enum SdkType {
   iPhone,
@@ -38,7 +41,7 @@ enum SdkType {
 ///
 /// Usage: xcrun [options] <tool name> ... arguments ...
 /// ...
-/// --sdk <sdk name>            find the tool for the given SDK name
+/// --sdk <sdk name>            find the tool for the given SDK name.
 String getNameForSdk(SdkType sdk) {
   switch (sdk) {
     case SdkType.iPhone:
@@ -96,8 +99,8 @@ class Xcode {
   }
 
   int get majorVersion => _xcodeProjectInterpreter.majorVersion;
-
   int get minorVersion => _xcodeProjectInterpreter.minorVersion;
+  int get patchVersion => _xcodeProjectInterpreter.patchVersion;
 
   String get versionText => _xcodeProjectInterpreter.versionText;
 
@@ -150,6 +153,9 @@ class Xcode {
       return true;
     }
     if (majorVersion == kXcodeRequiredVersionMajor) {
+      if (minorVersion == kXcodeRequiredVersionMinor) {
+        return patchVersion >= kXcodeRequiredVersionPatch;
+      }
       return minorVersion >= kXcodeRequiredVersionMinor;
     }
     return false;
@@ -208,6 +214,7 @@ class XCDevice {
     @required Logger logger,
     @required Xcode xcode,
     @required Platform platform,
+    @required IProxy iproxy,
   }) : _processUtils = ProcessUtils(logger: logger, processManager: processManager),
       _logger = logger,
       _iMobileDevice = IMobileDevice(
@@ -223,6 +230,7 @@ class XCDevice {
         platform: platform,
         processManager: processManager,
       ),
+      _iProxy = iproxy,
       _xcode = xcode {
 
     _setupDeviceIdentifierByEventStream();
@@ -237,6 +245,7 @@ class XCDevice {
   final IMobileDevice _iMobileDevice;
   final IOSDeploy _iosDeploy;
   final Xcode _xcode;
+  final IProxy _iProxy;
 
   List<dynamic> _cachedListResults;
   Process _deviceObservationProcess;
@@ -325,8 +334,9 @@ class XCDevice {
   }
 
   // Attach: d83d5bc53967baa0ee18626ba87b6254b2ab5418
+  // Attach: 00008027-00192736010F802E
   // Detach: d83d5bc53967baa0ee18626ba87b6254b2ab5418
-  final RegExp _observationIdentifierPattern = RegExp(r'^(\w*): (\w*)$');
+  final RegExp _observationIdentifierPattern = RegExp(r'^(\w*): ([\w-]*)$');
 
   Future<void> _startObservingTetheredIOSDevices() async {
     try {
@@ -358,6 +368,7 @@ class XCDevice {
         //
         // Listening for all devices, on both interfaces.
         // Attach: d83d5bc53967baa0ee18626ba87b6254b2ab5418
+        // Attach: 00008027-00192736010F802E
         // Detach: d83d5bc53967baa0ee18626ba87b6254b2ab5418
         // Attach: d83d5bc53967baa0ee18626ba87b6254b2ab5418
         final RegExpMatch match = _observationIdentifierPattern.firstMatch(line);
@@ -495,12 +506,13 @@ class XCDevice {
         cpuArchitecture: _cpuArchitecture(deviceProperties),
         interfaceType: interface,
         sdkVersion: _sdkVersion(deviceProperties),
-        artifacts: globals.artifacts,
+        iProxy: _iProxy,
         fileSystem: globals.fs,
-        logger: globals.logger,
+        logger: _logger,
         iosDeploy: _iosDeploy,
         iMobileDevice: _iMobileDevice,
         platform: globals.platform,
+        vmServiceConnectUri: vm_service_io.vmServiceConnectUri,
       ));
     }
     return devices;

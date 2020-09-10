@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -99,6 +101,15 @@ void main() {
       ),
     ));
 
+    expect(tester.getSemantics(find.byWidgetPredicate((Widget widget) => widget.runtimeType.toString() == '_CheckboxRenderObjectWidget')), matchesSemantics(
+      hasCheckedState: true,
+      hasEnabledState: true,
+      // isFocusable is delayed by 1 frame.
+      isFocusable: true,
+    ));
+
+    await tester.pump();
+    // isFocusable should be false now after the 1 frame delay.
     expect(tester.getSemantics(find.byWidgetPredicate((Widget widget) => widget.runtimeType.toString() == '_CheckboxRenderObjectWidget')), matchesSemantics(
       hasCheckedState: true,
       hasEnabledState: true,

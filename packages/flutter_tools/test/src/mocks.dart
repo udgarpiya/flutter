@@ -244,11 +244,11 @@ class FakeProcess implements Process {
   FakeProcess({
     this.pid = 1,
     Future<int> exitCode,
-    Stream<List<int>> stdin,
+    IOSink stdin,
     this.stdout = const Stream<List<int>>.empty(),
     this.stderr = const Stream<List<int>>.empty(),
   }) : exitCode = exitCode ?? Future<int>.value(0),
-       stdin = stdin as IOSink ?? MemoryIOSink();
+       stdin = stdin ?? MemoryIOSink();
 
   @override
   final int pid;
@@ -526,6 +526,48 @@ class FakePollingDeviceDiscovery extends PollingDeviceDiscovery {
   Stream<Device> get onRemoved => _onRemovedController.stream;
 }
 
+class LongPollingDeviceDiscovery extends PollingDeviceDiscovery {
+  LongPollingDeviceDiscovery() : super('forever');
+
+  final Completer<List<Device>> _completer = Completer<List<Device>>();
+
+  @override
+  Future<List<Device>> pollingGetDevices({ Duration timeout }) async {
+    return _completer.future;
+  }
+
+  @override
+  Future<void> stopPolling() async {
+    _completer.complete();
+  }
+
+  @override
+  Future<void> dispose() async {
+    _completer.complete();
+  }
+
+  @override
+  bool get supportsPlatform => true;
+
+  @override
+  bool get canListAnything => true;
+}
+
+class ThrowingPollingDeviceDiscovery extends PollingDeviceDiscovery {
+  ThrowingPollingDeviceDiscovery() : super('throw');
+
+  @override
+  Future<List<Device>> pollingGetDevices({ Duration timeout }) async {
+    throw const ProcessException('fake-discovery', <String>[]);
+  }
+
+  @override
+  bool get supportsPlatform => true;
+
+  @override
+  bool get canListAnything => true;
+}
+
 class MockIosProject extends Mock implements IosProject {
   static const String bundleId = 'com.example.test';
   static const String appBundleName = 'My Super Awesome App.app';
@@ -580,7 +622,7 @@ void applyMocksToCommand(FlutterCommand command) {
   command.applicationPackages = MockApplicationPackageStore();
 }
 
-/// Common functionality for tracking mock interaction
+/// Common functionality for tracking mock interaction.
 class BasicMock {
   final List<String> messages = <String>[];
 
@@ -698,6 +740,9 @@ class MockStdIn extends Mock implements IOSink {
 }
 
 class MockStream extends Mock implements Stream<List<int>> {}
+
+class MockDevToolsServer extends Mock implements HttpServer {}
+class MockInternetAddress extends Mock implements InternetAddress {}
 
 class AlwaysTrueBotDetector implements BotDetector {
   const AlwaysTrueBotDetector();

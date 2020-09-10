@@ -574,10 +574,8 @@ void main() {
         }, retainPriorEvents: true);
 
         expect(log, const <String>[
-          'getVMTimelineMicros',
           'startTracing',
           'action',
-          'getVMTimelineMicros',
           'stopTracing',
           'download',
         ]);
@@ -768,6 +766,16 @@ void main() {
         });
 
         expect(driver.waitFor(find.byTooltip('foo')), throwsDriverError);
+      });
+    });
+
+    group('VMServiceFlutterDriver Unsupported error', () {
+      test('enableAccessibility', () async {
+        expect(driver.enableAccessibility(), throwsA(isA<UnsupportedError>()));
+      });
+
+      test('webDriver', () async {
+        expect(() => driver.webDriver, throwsA(isA<UnsupportedError>()));
       });
     });
   });
@@ -1119,7 +1127,7 @@ void main() {
       await driver.checkHealth();
     });
 
-    group('WebFlutterDriver Unimplemented error', () {
+    group('WebFlutterDriver Unimplemented/Unsupported error', () {
       test('forceGC', () async {
         expect(driver.forceGC(),
             throwsA(isA<UnimplementedError>()));

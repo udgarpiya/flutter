@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// @dart = 2.8
+
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
@@ -17,7 +19,22 @@ import 'ticker_provider.dart';
 ///
 /// The user can transform the child by dragging to pan or pinching to zoom.
 ///
+/// By default, InteractiveViewer may draw outside of its original area of the
+/// screen, such as when a child is zoomed in and increases in size. However, it
+/// will not receive gestures outside of its original area. To prevent
+/// InteractiveViewer from drawing outside of its original size, wrap it in a
+/// [ClipRect]. Or, to prevent dead areas where InteractiveViewer does not
+/// receive gestures, be sure that the InteractiveViewer widget is the size of
+/// the area that should be interactive. See
+/// [flutter-go](https://github.com/justinmc/flutter-go) for an example of
+/// robust positioning of an InteractiveViewer child that works for all screen
+/// sizes and child sizes.
+///
 /// The [child] must not be null.
+///
+/// See also:
+///   * The [Flutter Gallery's transformations demo](https://github.com/flutter/gallery/blob/master/lib/demos/reference/transformations_demo.dart),
+///     which includes the use of InteractiveViewer.
 ///
 /// {@tool dartpad --template=stateless_widget_scaffold}
 /// This example shows a simple Container that can be panned and zoomed.
@@ -51,6 +68,7 @@ class InteractiveViewer extends StatefulWidget {
   /// The [child] parameter must not be null.
   InteractiveViewer({
     Key key,
+    this.alignPanAxis = false,
     this.boundaryMargin = EdgeInsets.zero,
     this.constrained = true,
     // These default scale values were eyeballed as reasonable limits for common
@@ -64,7 +82,8 @@ class InteractiveViewer extends StatefulWidget {
     this.scaleEnabled = true,
     this.transformationController,
     @required this.child,
-  }) : assert(child != null),
+  }) : assert(alignPanAxis != null),
+       assert(child != null),
        assert(constrained != null),
        assert(minScale != null),
        assert(minScale > 0),
@@ -82,6 +101,15 @@ class InteractiveViewer extends StatefulWidget {
            && boundaryMargin.right.isFinite && boundaryMargin.bottom.isFinite
            && boundaryMargin.left.isFinite)),
        super(key: key);
+
+  /// If true, panning is only allowed in the direction of the horizontal axis
+  /// or the vertical axis.
+  ///
+  /// In other words, when this is true, diagonal panning is not allowed. A
+  /// single gesture begun along one axis cannot also cause panning along the
+  /// other axis without stopping and beginning a new gesture. This is a common
+  /// pattern in tables where data is displayed in columns and rows.
+  final bool alignPanAxis;
 
   /// A margin for the visible boundaries of the child.
   ///
@@ -475,6 +503,7 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
   final GlobalKey _parentKey = GlobalKey();
   Animation<Offset> _animation;
   AnimationController _controller;
+  Axis _panAxis; // Used with alignPanAxis.
   Offset _referenceFocalPoint; // Point where the current gesture began.
   double _scaleStart; // Scale value at start of scaling gesture.
   double _rotationStart = 0.0; // Rotation at start of rotation gesture.
@@ -492,11 +521,7 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
 
   // The _boundaryRect is calculated by adding the boundaryMargin to the size of
   // the child.
-  Rect _boundaryRectCached;
   Rect get _boundaryRect {
-    if (_boundaryRectCached != null) {
-      return _boundaryRectCached;
-    }
     assert(_childKey.currentContext != null);
     assert(!widget.boundaryMargin.left.isNaN);
     assert(!widget.boundaryMargin.right.isNaN);
@@ -505,15 +530,15 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
 
     final RenderBox childRenderBox = _childKey.currentContext.findRenderObject() as RenderBox;
     final Size childSize = childRenderBox.size;
-    _boundaryRectCached = widget.boundaryMargin.inflateRect(Offset.zero & childSize);
+    final Rect boundaryRect = widget.boundaryMargin.inflateRect(Offset.zero & childSize);
     // Boundaries that are partially infinite are not allowed because Matrix4's
     // rotation and translation methods don't handle infinites well.
-    assert(_boundaryRectCached.isFinite ||
-        (_boundaryRectCached.left.isInfinite
-        && _boundaryRectCached.top.isInfinite
-        && _boundaryRectCached.right.isInfinite
-        && _boundaryRectCached.bottom.isInfinite), 'boundaryRect must either be infinite in all directions or finite in all directions.');
-    return _boundaryRectCached;
+    assert(boundaryRect.isFinite ||
+        (boundaryRect.left.isInfinite
+        && boundaryRect.top.isInfinite
+        && boundaryRect.right.isInfinite
+        && boundaryRect.bottom.isInfinite), 'boundaryRect must either be infinite in all directions or finite in all directions.');
+    return boundaryRect;
   }
 
   // The Rect representing the child's parent.
@@ -530,9 +555,13 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
       return matrix.clone();
     }
 
+    final Offset alignedTranslation = widget.alignPanAxis && _panAxis != null
+      ? _alignAxis(translation, _panAxis)
+      : translation;
+
     final Matrix4 nextMatrix = matrix.clone()..translate(
-      translation.dx,
-      translation.dy,
+      alignedTranslation.dx,
+      alignedTranslation.dy,
     );
 
     // Transform the viewport to determine where its four corners will be after
@@ -657,16 +686,33 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
 
   // Returns true iff the given _GestureType is enabled.
   bool _gestureIsSupported(_GestureType gestureType) {
-    if (_gestureType == _GestureType.pan && !widget.panEnabled) {
-      return false;
+    switch (gestureType) {
+      case _GestureType.rotate:
+        return _rotateEnabled;
+
+      case _GestureType.scale:
+        return widget.scaleEnabled;
+
+      case _GestureType.pan:
+      default:
+        return widget.panEnabled;
     }
-    if (_gestureType == _GestureType.scale && !widget.scaleEnabled) {
-      return false;
+  }
+
+  // Decide which type of gesture this is by comparing the amount of scale
+  // and rotation in the gesture, if any. Scale starts at 1 and rotation
+  // starts at 0. Pan will have no scale and no rotation because it uses only one
+  // finger.
+  _GestureType _getGestureType(ScaleUpdateDetails details) {
+    final double scale = !widget.scaleEnabled ? 1.0 : details.scale;
+    final double rotation = !_rotateEnabled ? 0.0 : details.rotation;
+    if ((scale - 1).abs() > rotation.abs()) {
+      return _GestureType.scale;
+    } else if (rotation != 0.0) {
+      return _GestureType.rotate;
+    } else {
+      return _GestureType.pan;
     }
-    if (_gestureType == _GestureType.rotate && !_rotateEnabled) {
-      return false;
-    }
-    return true;
   }
 
   // Handle the start of a gesture. All of pan, scale, and rotate are handled
@@ -684,6 +730,7 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
     }
 
     _gestureType = null;
+    _panAxis = null;
     _scaleStart = _transformationController.value.getMaxScaleOnAxis();
     _referenceFocalPoint = _transformationController.toScene(
       details.localFocalPoint,
@@ -707,20 +754,23 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
     final Offset focalPointScene = _transformationController.toScene(
       details.localFocalPoint,
     );
-    _gestureType ??= _getGestureType(
-      !widget.scaleEnabled ? 1.0 : details.scale,
-      !_rotateEnabled ? 0.0 : details.rotation,
-    );
 
+    if (_gestureType == _GestureType.pan) {
+      // When a gesture first starts, it sometimes has no change in scale and
+      // rotation despite being a two-finger gesture. Here the gesture is
+      // allowed to be reinterpreted as its correct type after originally
+      // being marked as a pan.
+      _gestureType = _getGestureType(details);
+    } else {
+      _gestureType ??= _getGestureType(details);
+    }
     if (!_gestureIsSupported(_gestureType)) {
       return;
     }
 
     switch (_gestureType) {
       case _GestureType.scale:
-        if (_scaleStart == null) {
-          return;
-        }
+        assert(_scaleStart != null);
         // details.scale gives us the amount to change the scale as of the
         // start of this gesture, so calculate the amount to scale as of the
         // previous call to _onScaleUpdate.
@@ -770,9 +820,14 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
         return;
 
       case _GestureType.pan:
-        if (_referenceFocalPoint == null || details.scale != 1.0) {
+        assert(_referenceFocalPoint != null);
+        // details may have a change in scale here when scaleEnabled is false.
+        // In an effort to keep the behavior similar whether or not scaleEnabled
+        // is true, these gestures are thrown away.
+        if (details.scale != 1.0) {
           return;
         }
+        _panAxis ??= _getPanAxis(_referenceFocalPoint, focalPointScene);
         // Translate so that the same point in the scene is underneath the
         // focal point before and after the movement.
         final Offset translationChange = focalPointScene - _referenceFocalPoint;
@@ -801,11 +856,13 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
     _controller.reset();
 
     if (!_gestureIsSupported(_gestureType)) {
+      _panAxis = null;
       return;
     }
 
     // If the scale ended with enough velocity, animate inertial movement.
     if (_gestureType != _GestureType.pan || details.velocity.pixelsPerSecond.distance < kMinFlingVelocity) {
+      _panAxis = null;
       return;
     }
 
@@ -839,10 +896,13 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
 
   // Handle mousewheel scroll events.
   void _receivedPointerSignal(PointerSignalEvent event) {
+    if (!_gestureIsSupported(_GestureType.scale)) {
+      return;
+    }
     if (event is PointerScrollEvent) {
       final RenderBox childRenderBox = _childKey.currentContext.findRenderObject() as RenderBox;
       final Size childSize = childRenderBox.size;
-      final double scaleChange = 1.0 + event.scrollDelta.dy / childSize.height;
+      final double scaleChange = 1.0 - event.scrollDelta.dy / childSize.height;
       if (scaleChange == 0.0) {
         return;
       }
@@ -869,6 +929,7 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
   // Handle inertia drag animation.
   void _onAnimate() {
     if (!_controller.isAnimating) {
+      _panAxis = null;
       _animation?.removeListener(_onAnimate);
       _animation = null;
       _controller.reset();
@@ -911,10 +972,6 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
   @override
   void didUpdateWidget(InteractiveViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.child != oldWidget.child || widget.boundaryMargin != oldWidget.boundaryMargin) {
-      _boundaryRectCached = null;
-    }
-
     // Handle all cases of needing to dispose and initialize
     // transformationControllers.
     if (oldWidget.transformationController == null) {
@@ -1061,20 +1118,6 @@ double _getFinalTime(double velocity, double drag) {
   return math.log(effectivelyMotionless / velocity) / math.log(drag / 100);
 }
 
-// Decide which type of gesture this is by comparing the amount of scale
-// and rotation in the gesture, if any. Scale starts at 1 and rotation
-// starts at 0. Pan will have 0 scale and 0 rotation because it uses only one
-// finger.
-_GestureType _getGestureType(double scale, double rotation) {
-  if ((scale - 1).abs() > rotation.abs()) {
-    return _GestureType.scale;
-  } else if (rotation != 0) {
-    return _GestureType.rotate;
-  } else {
-    return _GestureType.pan;
-  }
-}
-
 // Return the translation from the given Matrix4 as an Offset.
 Offset _getMatrixTranslation(Matrix4 matrix) {
   final Vector3 nextTranslation = matrix.getTranslation();
@@ -1159,4 +1202,27 @@ Offset _round(Offset offset) {
     double.parse(offset.dx.toStringAsFixed(9)),
     double.parse(offset.dy.toStringAsFixed(9)),
   );
+}
+
+// Align the given offset to the given axis by allowing movement only in the
+// axis direction.
+Offset _alignAxis(Offset offset, Axis axis) {
+  switch (axis) {
+    case Axis.horizontal:
+      return Offset(offset.dx, 0.0);
+    case Axis.vertical:
+    default:
+      return Offset(0.0, offset.dy);
+  }
+}
+
+// Given two points, return the axis where the distance between the points is
+// greatest. If they are equal, return null.
+Axis _getPanAxis(Offset point1, Offset point2) {
+  if (point1 == point2) {
+    return null;
+  }
+  final double x = point2.dx - point1.dx;
+  final double y = point2.dy - point1.dy;
+  return x.abs() > y.abs() ? Axis.horizontal : Axis.vertical;
 }

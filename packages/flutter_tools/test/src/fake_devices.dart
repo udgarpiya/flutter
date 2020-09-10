@@ -47,14 +47,14 @@ List<FakeDeviceJsonData> fakeDevices = <FakeDeviceJsonData>[
         'screenshot': false,
         'fastStart': false,
         'flutterExit': true,
-        'hardwareRendering': false,
+        'hardwareRendering': true,
         'startPaused': true
       }
     }
   ),
 ];
 
-/// Fake device to test `devices` command
+/// Fake device to test `devices` command.
 class FakeDevice extends Device {
   FakeDevice(this.name, String id, [bool ephemeral = true, this._isSupported = true, PlatformType type = PlatformType.web]) : super(
       id,
@@ -87,7 +87,7 @@ class FakeDevice extends Device {
   Future<String> sdkNameAndVersion = Future<String>.value('Test SDK (1.2.3)');
 }
 
-/// Combines fake device with its canonical JSON representation
+/// Combines fake device with its canonical JSON representation.
 class FakeDeviceJsonData {
   FakeDeviceJsonData(this.dev, this.json);
 
