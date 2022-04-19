@@ -3,12 +3,10 @@
 // found in the LICENSE file.
 
 import 'dart:html' as html;
-import 'dart:ui';
 
 import 'package:collection/collection.dart';
-import 'package:meta/dart2js.dart';
-
 import 'package:flutter/foundation.dart';
+import 'package:meta/dart2js.dart';
 
 /// Expected sequence of method calls.
 const List<String> callChain = <String>['baz', 'bar', 'foo'];
@@ -34,7 +32,7 @@ const List<StackFrame> expectedDebugStackFrames = <StackFrame>[
     packageScheme: 'package',
     package: 'packages',
     packagePath: 'web_integration/stack_trace.dart',
-    line: 121,
+    line: 119,
     column: 3,
     className: '<unknown>',
     method: 'baz',
@@ -45,7 +43,7 @@ const List<StackFrame> expectedDebugStackFrames = <StackFrame>[
     packageScheme: 'package',
     package: 'packages',
     packagePath: 'web_integration/stack_trace.dart',
-    line: 116,
+    line: 114,
     column: 3,
     className: '<unknown>',
     method: 'bar',
@@ -56,7 +54,7 @@ const List<StackFrame> expectedDebugStackFrames = <StackFrame>[
     packageScheme: 'package',
     package: 'packages',
     packagePath: 'web_integration/stack_trace.dart',
-    line: 111,
+    line: 109,
     column: 3,
     className: '<unknown>',
     method: 'foo',
@@ -152,11 +150,12 @@ class StackFrameEquality implements Equality<StackFrame> {
            e1.method == e2.method;
   }
 
+  // TODO(dnfield): This ignore shouldn't be necessary, see https://github.com/dart-lang/sdk/issues/46477
   @override
-  int hash(StackFrame e) {
-    return hashValues(e.number, e.packageScheme, e.package, e.packagePath, e.line, e.column, e.className, e.method);
+  int hash(StackFrame e) { // ignore: avoid_renaming_method_parameters
+    return Object.hash(e.number, e.packageScheme, e.package, e.packagePath, e.line, e.column, e.className, e.method);
   }
 
   @override
-  bool isValidKey(Object o) => o is StackFrame;
+  bool isValidKey(Object? o) => o is StackFrame;
 }

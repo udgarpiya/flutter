@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'dart:ui' as ui show lerpDouble;
 
 import 'package:flutter/foundation.dart';
@@ -30,11 +29,10 @@ class RoundedRectangleBorder extends OutlinedBorder {
   ///
   /// The arguments must not be null.
   const RoundedRectangleBorder({
-    BorderSide side = BorderSide.none,
+    super.side,
     this.borderRadius = BorderRadius.zero,
   }) : assert(side != null),
-       assert(borderRadius != null),
-       super(side: side);
+       assert(borderRadius != null);
 
   /// The radii for each corner.
   final BorderRadiusGeometry borderRadius;
@@ -93,7 +91,7 @@ class RoundedRectangleBorder extends OutlinedBorder {
   /// Returns a copy of this RoundedRectangleBorder with the given fields
   /// replaced with the new values.
   @override
-  RoundedRectangleBorder copyWith({ BorderSide? side, BorderRadius? borderRadius }) {
+  RoundedRectangleBorder copyWith({ BorderSide? side, BorderRadiusGeometry? borderRadius }) {
     return RoundedRectangleBorder(
       side: side ?? this.side,
       borderRadius: borderRadius ?? this.borderRadius,
@@ -141,7 +139,7 @@ class RoundedRectangleBorder extends OutlinedBorder {
   }
 
   @override
-  int get hashCode => hashValues(side, borderRadius);
+  int get hashCode => Object.hash(side, borderRadius);
 
   @override
   String toString() {
@@ -151,13 +149,12 @@ class RoundedRectangleBorder extends OutlinedBorder {
 
 class _RoundedRectangleToCircleBorder extends OutlinedBorder {
   const _RoundedRectangleToCircleBorder({
-    BorderSide side = BorderSide.none,
+    super.side,
     this.borderRadius = BorderRadius.zero,
     required this.circleness,
   }) : assert(side != null),
        assert(borderRadius != null),
-       assert(circleness != null),
-       super(side: side);
+       assert(circleness != null);
 
   final BorderRadiusGeometry borderRadius;
 
@@ -272,7 +269,7 @@ class _RoundedRectangleToCircleBorder extends OutlinedBorder {
   }
 
   @override
-  _RoundedRectangleToCircleBorder copyWith({ BorderSide? side, BorderRadius? borderRadius, double? circleness }) {
+  _RoundedRectangleToCircleBorder copyWith({ BorderSide? side, BorderRadiusGeometry? borderRadius, double? circleness }) {
     return _RoundedRectangleToCircleBorder(
       side: side ?? this.side,
       borderRadius: borderRadius ?? this.borderRadius,
@@ -310,7 +307,7 @@ class _RoundedRectangleToCircleBorder extends OutlinedBorder {
   }
 
   @override
-  int get hashCode => hashValues(side, borderRadius, circleness);
+  int get hashCode => Object.hash(side, borderRadius, circleness);
 
   @override
   String toString() {

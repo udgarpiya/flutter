@@ -55,7 +55,7 @@ ui.Picture paint(ui.Rect paintBounds) {
 
   final ui.Gradient yellowBlue = ui.Gradient.linear(
     ui.Offset(-radius, -radius),
-    const ui.Offset(0.0, 0.0),
+    ui.Offset.zero,
     <ui.Color>[const ui.Color(0xFFFFFF00), const ui.Color(0xFF0000FF)],
   );
 
@@ -122,6 +122,7 @@ void beginFrame(Duration timeStamp) {
 }
 
 void main() {
-  ui.window.onBeginFrame = beginFrame;
-  ui.window.scheduleFrame();
+  ui.PlatformDispatcher.instance
+    ..onBeginFrame = beginFrame
+    ..scheduleFrame();
 }

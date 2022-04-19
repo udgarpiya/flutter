@@ -7,7 +7,7 @@ import 'animation.dart';
 import 'tween.dart';
 
 // Examples can assume:
-// AnimationController myAnimationController;
+// late AnimationController myAnimationController;
 
 /// Enables creating an [Animation] whose value is defined by a sequence of
 /// [Tween]s.
@@ -22,7 +22,7 @@ import 'tween.dart';
 /// for the next 20%, and then returns to 5.0 for the final 40%.
 ///
 /// ```dart
-/// final Animation<double> animation = TweenSequence(
+/// final Animation<double> animation = TweenSequence<double>(
 ///   <TweenSequenceItem<double>>[
 ///     TweenSequenceItem<double>(
 ///       tween: Tween<double>(begin: 5.0, end: 10.0)
@@ -110,9 +110,8 @@ class FlippedTweenSequence extends TweenSequence<double> {
   /// There's a small cost associated with building a `TweenSequence` so it's
   /// best to reuse one, rather than rebuilding it on every frame, when that's
   /// possible.
-  FlippedTweenSequence(List<TweenSequenceItem<double>> items)
-    : assert(items != null),
-      super(items);
+  FlippedTweenSequence(super.items)
+    : assert(items != null);
 
   @override
   double transform(double t) => 1 - super.transform(1 - t);

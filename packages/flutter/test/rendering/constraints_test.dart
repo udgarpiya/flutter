@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/rendering.dart';
-import '../flutter_test_alternative.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'rendering_tester.dart';
 
 void main() {
+  TestRenderingFlutterBinding.ensureInitialized();
+
   test('RenderFractionallySizedBox constraints', () {
     RenderBox root, leaf, test;
     root = RenderPositionedBox(
@@ -19,7 +19,7 @@ void main() {
           widthFactor: 2.0,
           heightFactor: 0.5,
           child: leaf = RenderConstrainedBox(
-            additionalConstraints: const BoxConstraints.expand()
+            additionalConstraints: const BoxConstraints.expand(),
           ),
         ),
       ),
@@ -46,7 +46,7 @@ void main() {
     expect(result, equals(
       'BoxConstraints has NaN values in minWidth, maxWidth, and maxHeight.\n'
       'The offending constraints were:\n'
-      '  BoxConstraints(NaN<=w<=NaN, 2.0<=h<=NaN; NOT NORMALIZED)'
+      '  BoxConstraints(NaN<=w<=NaN, 2.0<=h<=NaN; NOT NORMALIZED)',
     ));
 
     result = 'no exception';
@@ -59,7 +59,7 @@ void main() {
     expect(result, equals(
       'BoxConstraints has a NaN value in minHeight.\n'
       'The offending constraints were:\n'
-      '  BoxConstraints(0.0<=w<=Infinity, NaN<=h<=Infinity; NOT NORMALIZED)'
+      '  BoxConstraints(0.0<=w<=Infinity, NaN<=h<=Infinity; NOT NORMALIZED)',
     ));
 
     result = 'no exception';
@@ -72,7 +72,7 @@ void main() {
     expect(result, equals(
       'BoxConstraints has NaN values in maxWidth and minHeight.\n'
       'The offending constraints were:\n'
-      '  BoxConstraints(0.0<=w<=NaN, NaN<=h<=Infinity; NOT NORMALIZED)'
+      '  BoxConstraints(0.0<=w<=NaN, NaN<=h<=Infinity; NOT NORMALIZED)',
     ));
   });
 }

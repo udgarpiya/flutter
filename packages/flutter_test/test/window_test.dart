@@ -5,13 +5,13 @@
 import 'dart:ui' as ui show window;
 import 'dart:ui' show Size, Locale, WindowPadding, AccessibilityFeatures, Brightness;
 
-import 'package:flutter/widgets.dart' show WidgetsBinding;
+import 'package:flutter/widgets.dart' show WidgetsBinding, WidgetsBindingObserver;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meta/meta.dart';
 
 void main() {
   test('TestWindow can handle new methods without breaking', () {
     final dynamic testWindow = TestWindow(window: ui.window);
+    // ignore: avoid_dynamic_calls
     expect(testWindow.someNewProperty, null);
   });
 
@@ -127,6 +127,18 @@ void main() {
     );
   });
 
+  testWidgets('TestWindow can fake brieflyShowPassword', (WidgetTester tester) async {
+    verifyThatTestWindowCanFakeProperty<bool>(
+      tester: tester,
+      realValue: ui.window.brieflyShowPassword,
+      fakeValue: !ui.window.brieflyShowPassword,
+      propertyRetriever: () => WidgetsBinding.instance.window.brieflyShowPassword,
+      propertyFaker: (TestWidgetsFlutterBinding binding, bool fakeValue) {
+        binding.window.brieflyShowPasswordTestValue = fakeValue;
+      },
+    );
+  });
+
   testWidgets('TestWindow can fake default route name', (WidgetTester tester) async {
     verifyThatTestWindowCanFakeProperty<String>(
       tester: tester,
@@ -185,17 +197,27 @@ void main() {
     expect(WidgetsBinding.instance.window.devicePixelRatio, originalDevicePixelRatio);
     expect(WidgetsBinding.instance.window.textScaleFactor, originalTextScaleFactor);
   });
+
+  testWidgets('TestWindow sends fake locales when WidgetsBindingObserver notifiers are called', (WidgetTester tester) async {
+    final List<Locale> defaultLocales = WidgetsBinding.instance.window.locales;
+    final TestObserver observer = TestObserver();
+    retrieveTestBinding(tester).addObserver(observer);
+    final List<Locale> expectedValue = <Locale>[const Locale('fake_language_code')];
+    retrieveTestBinding(tester).window.localesTestValue = expectedValue;
+    expect(observer.locales, equals(expectedValue));
+    retrieveTestBinding(tester).window.localesTestValue = defaultLocales;
+  });
 }
 
 void verifyThatTestWindowCanFakeProperty<WindowPropertyType>({
-  @required WidgetTester tester,
-  @required WindowPropertyType realValue,
-  @required WindowPropertyType fakeValue,
-  @required WindowPropertyType Function() propertyRetriever,
-  @required Function(TestWidgetsFlutterBinding, WindowPropertyType fakeValue) propertyFaker,
+  required WidgetTester tester,
+  required WindowPropertyType? realValue,
+  required WindowPropertyType fakeValue,
+  required WindowPropertyType? Function() propertyRetriever,
+  required Function(TestWidgetsFlutterBinding, WindowPropertyType fakeValue) propertyFaker,
 }) {
-  WindowPropertyType propertyBeforeFaking;
-  WindowPropertyType propertyAfterFaking;
+  WindowPropertyType? propertyBeforeFaking;
+  WindowPropertyType? propertyAfterFaking;
 
   propertyBeforeFaking = propertyRetriever();
 
@@ -235,42 +257,12 @@ class FakeWindowPadding implements WindowPadding {
   final double bottom;
 }
 
-class FakeAccessibilityFeatures implements AccessibilityFeatures {
-  const FakeAccessibilityFeatures({
-    this.accessibleNavigation = false,
-    this.invertColors = false,
-    this.disableAnimations = false,
-    this.boldText = false,
-    this.reduceMotion = false,
-    this.highContrast = false,
-  });
+class TestObserver with WidgetsBindingObserver {
+  List<Locale>? locales;
+  Locale? locale;
 
   @override
-  final bool accessibleNavigation;
-
-  @override
-  final bool invertColors;
-
-  @override
-  final bool disableAnimations;
-
-  @override
-  final bool boldText;
-
-  @override
-  final bool reduceMotion;
-
-  @override
-  final bool highContrast;
-
-  /// This gives us some grace time when the dart:ui side adds something to
-  /// [AccessibilityFeatures], and makes things easier when we do rolls to
-  /// give us time to catch up.
-  ///
-  /// If you would like to add to this class, changes must first be made in the
-  /// engine, followed by the framework.
-  @override
-  dynamic noSuchMethod(Invocation invocation) {
-    return null;
+  void didChangeLocales(List<Locale>? locales) {
+    this.locales = locales;
   }
 }

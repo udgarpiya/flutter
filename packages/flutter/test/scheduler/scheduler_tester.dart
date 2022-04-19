@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/scheduler.dart';
 
-@Deprecated('scheduler_tester is not compatible with dart:async') // ignore: flutter_deprecation_syntax (see analyze.dart)
+@Deprecated('scheduler_tester is not compatible with dart:async') // flutter_ignore: deprecation_syntax (see analyze.dart)
 class Future { } // so that people can't import us and dart:async
 
 void tick(Duration duration) {

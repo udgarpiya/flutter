@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'package:flutter/foundation.dart';
 
 import 'basic_types.dart';
@@ -29,7 +28,7 @@ abstract class Decoration with Diagnosticable {
   @override
   String toStringShort() => objectRuntimeType(this, 'Decoration');
 
-  /// In checked mode, throws an exception if the object is not in a
+  /// In debug mode, throws an exception if the object is not in a
   /// valid configuration. Otherwise, returns true.
   ///
   /// This is intended to be used as follows:

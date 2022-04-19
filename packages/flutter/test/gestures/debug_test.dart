@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,7 +12,7 @@ void main() {
     debugPrintGestureArenaDiagnostics = true;
     final DebugPrintCallback oldCallback = debugPrint;
     final List<String> log = <String>[];
-    debugPrint = (String s, { int wrapWidth }) { log.add(s); };
+    debugPrint = (String? s, { int? wrapWidth }) { log.add(s ?? ''); };
 
     final TapGestureRecognizer tap = TapGestureRecognizer()
       ..onTapDown = (TapDownDetails details) { }
@@ -60,7 +58,7 @@ void main() {
     debugPrintRecognizerCallbacksTrace = true;
     final DebugPrintCallback oldCallback = debugPrint;
     final List<String> log = <String>[];
-    debugPrint = (String s, { int wrapWidth }) { log.add(s); };
+    debugPrint = (String? s, { int? wrapWidth }) { log.add(s ?? ''); };
 
     final TapGestureRecognizer tap = TapGestureRecognizer()
       ..onTapDown = (TapDownDetails details) { }
@@ -103,7 +101,7 @@ void main() {
     debugPrintRecognizerCallbacksTrace = true;
     final DebugPrintCallback oldCallback = debugPrint;
     final List<String> log = <String>[];
-    debugPrint = (String s, { int wrapWidth }) { log.add(s); };
+    debugPrint = (String? s, { int? wrapWidth }) { log.add(s ?? ''); };
 
     final TapGestureRecognizer tap = TapGestureRecognizer()
       ..onTapDown = (TapDownDetails details) { }
@@ -156,5 +154,7 @@ void main() {
     tap.addPointer(event);
     tap.didExceedDeadline();
     expect(tap.toString(), equalsIgnoringHashCodes('TapGestureRecognizer#00000(state: possible, button: 1, sent tap down)'));
+    GestureBinding.instance.gestureArena.close(1);
+    tap.dispose();
   });
 }

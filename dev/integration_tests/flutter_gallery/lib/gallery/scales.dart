@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 class GalleryTextScaleValue {
   const GalleryTextScaleValue(this.scale, this.label);
 
-  final double scale;
+  final double? scale;
   final String label;
 
   @override
@@ -21,7 +21,7 @@ class GalleryTextScaleValue {
   }
 
   @override
-  int get hashCode => hashValues(scale, label);
+  int get hashCode => Object.hash(scale, label);
 
   @override
   String toString() {
@@ -55,7 +55,7 @@ class GalleryVisualDensityValue {
   }
 
   @override
-  int get hashCode => hashValues(visualDensity, label);
+  int get hashCode => Object.hash(visualDensity, label);
 
   @override
   String toString() {
@@ -65,7 +65,7 @@ class GalleryVisualDensityValue {
 }
 
 const List<GalleryVisualDensityValue> kAllGalleryVisualDensityValues = <GalleryVisualDensityValue>[
-  GalleryVisualDensityValue(VisualDensity(), 'System Default'),
+  GalleryVisualDensityValue(VisualDensity.standard, 'System Default'),
   GalleryVisualDensityValue(VisualDensity.comfortable, 'Comfortable'),
   GalleryVisualDensityValue(VisualDensity.compact, 'Compact'),
   GalleryVisualDensityValue(VisualDensity(horizontal: -3, vertical: -3), 'Very Compact'),

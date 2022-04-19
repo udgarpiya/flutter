@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -44,10 +42,10 @@ class OutlinedButtonThemeData with Diagnosticable {
   /// [OutlinedButton.defaultStyleOf].
   ///
   /// If [style] is null, then this theme doesn't override anything.
-  final ButtonStyle style;
+  final ButtonStyle? style;
 
   /// Linearly interpolate between two outlined button themes.
-  static OutlinedButtonThemeData lerp(OutlinedButtonThemeData a, OutlinedButtonThemeData b, double t) {
+  static OutlinedButtonThemeData? lerp(OutlinedButtonThemeData? a, OutlinedButtonThemeData? b, double t) {
     assert (t != null);
     if (a == null && b == null)
       return null;
@@ -57,9 +55,7 @@ class OutlinedButtonThemeData with Diagnosticable {
   }
 
   @override
-  int get hashCode {
-    return style.hashCode;
-  }
+  int get hashCode => style.hashCode;
 
   @override
   bool operator ==(Object other) {
@@ -93,10 +89,10 @@ class OutlinedButtonTheme extends InheritedTheme {
   ///
   /// The [data] parameter must not be null.
   const OutlinedButtonTheme({
-    Key key,
-    @required this.data,
-    Widget child,
-  }) : assert(data != null), super(key: key, child: child);
+    super.key,
+    required this.data,
+    required super.child,
+  }) : assert(data != null);
 
   /// The configuration of this theme.
   final OutlinedButtonThemeData data;
@@ -109,17 +105,16 @@ class OutlinedButtonTheme extends InheritedTheme {
   /// Typical usage is as follows:
   ///
   /// ```dart
-  /// OutlinedButtonTheme theme = OutlinedButtonTheme.of(context);
+  /// OutlinedButtonThemeData theme = OutlinedButtonTheme.of(context);
   /// ```
   static OutlinedButtonThemeData of(BuildContext context) {
-    final OutlinedButtonTheme buttonTheme = context.dependOnInheritedWidgetOfExactType<OutlinedButtonTheme>();
+    final OutlinedButtonTheme? buttonTheme = context.dependOnInheritedWidgetOfExactType<OutlinedButtonTheme>();
     return buttonTheme?.data ?? Theme.of(context).outlinedButtonTheme;
   }
 
   @override
   Widget wrap(BuildContext context, Widget child) {
-    final OutlinedButtonTheme ancestorTheme = context.findAncestorWidgetOfExactType<OutlinedButtonTheme>();
-    return identical(this, ancestorTheme) ? child : OutlinedButtonTheme(data: data, child: child);
+    return OutlinedButtonTheme(data: data, child: child);
   }
 
   @override

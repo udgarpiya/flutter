@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
@@ -14,7 +13,6 @@ import 'basic_types.dart';
 class MatrixUtils {
   // This class is not meant to be instantiated or extended; this constructor
   // prevents instantiation and extension.
-  // ignore: unused_element
   MatrixUtils._();
 
   /// Returns the given [transform] matrix as an [Offset], if the matrix is
@@ -172,7 +170,7 @@ class MatrixUtils {
     return Rect.fromLTRB(_minMax[0], _minMax[1], _minMax[2], _minMax[3]);
   }
 
-  static late final Float64List _minMax = Float64List(4);
+  static final Float64List _minMax = Float64List(4);
   static void _accumulate(Float64List m, double x, double y, bool first, bool isAffine) {
     final double w = isAffine ? 1.0 : 1.0 / (m[3] * x + m[7] * y + m[15]);
     final double tx = (m[0] * x + m[4] * y + m[12]) * w;
@@ -555,20 +553,13 @@ class TransformProperty extends DiagnosticsProperty<Matrix4> {
   ///
   /// The [showName] and [level] arguments must not be null.
   TransformProperty(
-    String name,
-    Matrix4? value, {
-    bool showName = true,
-    Object? defaultValue = kNoDefaultValue,
-    DiagnosticLevel level = DiagnosticLevel.info,
+    String super.name,
+    super.value, {
+    super.showName,
+    super.defaultValue,
+    super.level,
   }) : assert(showName != null),
-       assert(level != null),
-       super(
-         name,
-         value,
-         showName: showName,
-         defaultValue: defaultValue,
-         level: level,
-       );
+       assert(level != null);
 
   @override
   String valueToString({ TextTreeConfiguration? parentConfiguration }) {

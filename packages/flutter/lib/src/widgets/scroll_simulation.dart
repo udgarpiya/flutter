@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -31,19 +29,18 @@ class BouncingScrollSimulation extends Simulation {
   /// for the `spring` description if it is omitted; these defaults assume
   /// that the unit of length is the logical pixel.
   BouncingScrollSimulation({
-    @required double position,
-    @required double velocity,
-    @required this.leadingExtent,
-    @required this.trailingExtent,
-    @required this.spring,
-    Tolerance tolerance = Tolerance.defaultTolerance,
+    required double position,
+    required double velocity,
+    required this.leadingExtent,
+    required this.trailingExtent,
+    required this.spring,
+    super.tolerance,
   }) : assert(position != null),
        assert(velocity != null),
        assert(leadingExtent != null),
        assert(trailingExtent != null),
        assert(leadingExtent <= trailingExtent),
-       assert(spring != null),
-       super(tolerance: tolerance) {
+       assert(spring != null) {
     if (position < leadingExtent) {
       _springSimulation = _underscrollSimulation(position, velocity);
       _springTime = double.negativeInfinity;
@@ -88,12 +85,12 @@ class BouncingScrollSimulation extends Simulation {
   /// model to a spring model which causes [x] to "spring" back to [trailingExtent].
   final double trailingExtent;
 
-  /// The spring used used to return [x] to either [leadingExtent] or [trailingExtent].
+  /// The spring used to return [x] to either [leadingExtent] or [trailingExtent].
   final SpringDescription spring;
 
-  FrictionSimulation _frictionSimulation;
-  Simulation _springSimulation;
-  double _springTime;
+  late FrictionSimulation _frictionSimulation;
+  late Simulation _springSimulation;
+  late double _springTime;
   double _timeOffset = 0.0;
 
   Simulation _underscrollSimulation(double x, double dx) {
@@ -105,7 +102,7 @@ class BouncingScrollSimulation extends Simulation {
   }
 
   Simulation _simulation(double time) {
-    Simulation simulation;
+    final Simulation simulation;
     if (time > _springTime) {
       _timeOffset = _springTime.isFinite ? _springTime : 0.0;
       simulation = _springSimulation;
@@ -145,12 +142,11 @@ class BouncingScrollSimulation extends Simulation {
 class ClampingScrollSimulation extends Simulation {
   /// Creates a scroll physics simulation that matches Android scrolling.
   ClampingScrollSimulation({
-    @required this.position,
-    @required this.velocity,
+    required this.position,
+    required this.velocity,
     this.friction = 0.015,
-    Tolerance tolerance = Tolerance.defaultTolerance,
-  }) : assert(_flingVelocityPenetration(0.0) == _initialVelocityPenetration),
-       super(tolerance: tolerance) {
+    super.tolerance,
+  }) : assert(_flingVelocityPenetration(0.0) == _initialVelocityPenetration) {
     _duration = _flingDuration(velocity);
     _distance = (velocity * _duration / _initialVelocityPenetration).abs();
   }
@@ -167,8 +163,8 @@ class ClampingScrollSimulation extends Simulation {
   /// The more friction the particle experiences, the sooner it stops.
   final double friction;
 
-  double _duration;
-  double _distance;
+  late double _duration;
+  late double _distance;
 
   // See DECELERATION_RATE.
   static final double _kDecelerationRate = math.log(0.78) / math.log(0.9);
@@ -216,13 +212,13 @@ class ClampingScrollSimulation extends Simulation {
 
   @override
   double x(double time) {
-    final double t = (time / _duration).clamp(0.0, 1.0) as double;
+    final double t = (time / _duration).clamp(0.0, 1.0);
     return position + _distance * _flingDistancePenetration(t) * velocity.sign;
   }
 
   @override
   double dx(double time) {
-    final double t = (time / _duration).clamp(0.0, 1.0) as double;
+    final double t = (time / _duration).clamp(0.0, 1.0);
     return _distance * _flingVelocityPenetration(t) * velocity.sign / _duration;
   }
 

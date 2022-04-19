@@ -95,7 +95,6 @@ class AnnounceSemanticsEvent extends SemanticsEvent {
 ///
 /// This is only used by Android to announce tooltip values.
 class TooltipSemanticsEvent extends SemanticsEvent {
-
   /// Constructs an event that triggers a tooltip announcement by the platform.
   const TooltipSemanticsEvent(this.message) : super('tooltip');
 
@@ -115,7 +114,6 @@ class TooltipSemanticsEvent extends SemanticsEvent {
 /// Currently only honored on Android. Triggers a long-press specific sound
 /// when TalkBack is enabled.
 class LongPressSemanticsEvent extends SemanticsEvent {
-
   /// Constructs an event that triggers a long-press semantic feedback by the platform.
   const LongPressSemanticsEvent() : super('longPress');
 
@@ -128,35 +126,8 @@ class LongPressSemanticsEvent extends SemanticsEvent {
 /// Currently only honored on Android. Triggers a tap specific sound when
 /// TalkBack is enabled.
 class TapSemanticEvent extends SemanticsEvent {
-
   /// Constructs an event that triggers a long-press semantic feedback by the platform.
   const TapSemanticEvent() : super('tap');
-
-  @override
-  Map<String, dynamic> getDataMap() => const <String, dynamic>{};
-}
-
-/// An event which triggers a polite announcement of a live region.
-///
-/// This requires that the semantics node has already been marked as a live
-/// region. On Android, TalkBack will make a verbal announcement, as long as
-/// the label of the semantics node has changed since the last live region
-/// update. iOS does not currently support this event.
-///
-/// Deprecated. This message was never implemented, and references to it should
-/// be removed.
-///
-/// See also:
-///
-///  * [SemanticsFlag.isLiveRegion], for a description of live regions.
-///
-@Deprecated(
-  'This event has never been implemented and will be removed in a future version of Flutter. References to it should be removed. '
-  'This feature was deprecated after v1.12.16.'
-)
-class UpdateLiveRegionEvent extends SemanticsEvent {
-  /// Creates a new [UpdateLiveRegionEvent].
-  const UpdateLiveRegionEvent() : super('updateLiveRegion');
 
   @override
   Map<String, dynamic> getDataMap() => const <String, dynamic>{};

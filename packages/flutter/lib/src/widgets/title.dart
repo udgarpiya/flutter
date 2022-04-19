@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -18,13 +16,12 @@ class Title extends StatelessWidget {
   /// [color] must be an opaque color (i.e. color.alpha must be 255 (0xFF)).
   /// [color] and [child] are required arguments.
   Title({
-    Key key,
+    super.key,
     this.title = '',
-    @required this.color,
-    @required this.child,
+    required this.color,
+    required this.child,
   }) : assert(title != null),
-       assert(color != null && color.alpha == 0xFF),
-       super(key: key);
+       assert(color != null && color.alpha == 0xFF);
 
   /// A one-line description of this app for use in the window manager.
   /// Must not be null.
@@ -37,7 +34,7 @@ class Title extends StatelessWidget {
 
   /// The widget below this widget in the tree.
   ///
-  /// {@macro flutter.widgets.child}
+  /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
 
   @override

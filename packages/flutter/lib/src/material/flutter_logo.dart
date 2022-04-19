@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/widgets.dart';
 
 /// The Flutter logo, in widget form. This widget respects the [IconTheme].
@@ -22,7 +20,7 @@ class FlutterLogo extends StatelessWidget {
   /// The [textColor], [style], [duration], and [curve] arguments must not be
   /// null.
   const FlutterLogo({
-    Key key,
+    super.key,
     this.size,
     this.textColor = const Color(0xFF757575),
     this.style = FlutterLogoStyle.markOnly,
@@ -31,8 +29,7 @@ class FlutterLogo extends StatelessWidget {
   }) : assert(textColor != null),
        assert(style != null),
        assert(duration != null),
-       assert(curve != null),
-       super(key: key);
+       assert(curve != null);
 
   /// The size of the logo in logical pixels.
   ///
@@ -41,7 +38,7 @@ class FlutterLogo extends StatelessWidget {
   /// Defaults to the current [IconTheme] size, if any. If there is no
   /// [IconTheme], or it does not specify an explicit size, then it defaults to
   /// 24.0.
-  final double size;
+  final double? size;
 
   /// The color used to paint the "Flutter" text on the logo, if [style] is
   /// [FlutterLogoStyle.horizontal] or [FlutterLogoStyle.stacked].
@@ -64,7 +61,7 @@ class FlutterLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final IconThemeData iconTheme = IconTheme.of(context);
-    final double iconSize = size ?? iconTheme.size;
+    final double? iconSize = size ?? iconTheme.size;
     return AnimatedContainer(
       width: iconSize,
       height: iconSize,

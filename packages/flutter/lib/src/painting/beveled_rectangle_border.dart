@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -25,11 +24,10 @@ class BeveledRectangleBorder extends OutlinedBorder {
   ///
   /// The arguments must not be null.
   const BeveledRectangleBorder({
-    BorderSide side = BorderSide.none,
+    super.side,
     this.borderRadius = BorderRadius.zero,
   }) : assert(side != null),
-       assert(borderRadius != null),
-       super(side: side);
+       assert(borderRadius != null);
 
   /// The radii for each corner.
   ///
@@ -82,7 +80,7 @@ class BeveledRectangleBorder extends OutlinedBorder {
   /// Returns a copy of this RoundedRectangleBorder with the given fields
   /// replaced with the new values.
   @override
-  BeveledRectangleBorder copyWith({ BorderSide? side, BorderRadius? borderRadius }) {
+  BeveledRectangleBorder copyWith({ BorderSide? side, BorderRadiusGeometry? borderRadius }) {
     return BeveledRectangleBorder(
       side: side ?? this.side,
       borderRadius: borderRadius ?? this.borderRadius,
@@ -153,7 +151,7 @@ class BeveledRectangleBorder extends OutlinedBorder {
   }
 
   @override
-  int get hashCode => hashValues(side, borderRadius);
+  int get hashCode => Object.hash(side, borderRadius);
 
   @override
   String toString() {

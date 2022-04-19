@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -15,14 +13,14 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../image_data.dart';
 import '../rendering/rendering_tester.dart';
-import 'image_data.dart';
 import 'mocks_for_image_cache.dart';
 
 void main() {
-  TestRenderingFlutterBinding();
+  TestRenderingFlutterBinding.ensureInitialized();
 
-  FlutterExceptionHandler oldError;
+  FlutterExceptionHandler? oldError;
   setUp(() {
     oldError = FlutterError.onError;
   });
@@ -42,7 +40,7 @@ void main() {
     final ImageStream stream = imageProvider.resolve(ImageConfiguration.empty);
     stream.addListener(ImageStreamListener((ImageInfo info, bool syncCall) {
       caughtError.complete(false);
-    }, onError: (dynamic error, StackTrace stackTrace) {
+    }, onError: (dynamic error, StackTrace? stackTrace) {
       caughtError.complete(true);
     }));
     expect(await caughtError.future, true);
@@ -57,52 +55,6 @@ void main() {
     await imageProvider.obtainCacheStatus(configuration: ImageConfiguration.empty);
 
     expect(await caughtError.future, true);
-  });
-
-  test('resolve sync errors will be caught', () async {
-    bool uncaught = false;
-    final Zone testZone = Zone.current.fork(specification: ZoneSpecification(
-      handleUncaughtError: (Zone zone, ZoneDelegate zoneDelegate, Zone parent, Object error, StackTrace stackTrace) {
-        uncaught = true;
-      },
-    ));
-    await testZone.run(() async {
-      final ImageProvider imageProvider = LoadErrorImageProvider();
-      final Completer<bool> caughtError = Completer<bool>();
-      FlutterError.onError = (FlutterErrorDetails details) {
-        throw Error();
-      };
-      final ImageStream result = imageProvider.resolve(ImageConfiguration.empty);
-      result.addListener(ImageStreamListener((ImageInfo info, bool syncCall) {
-      }, onError: (dynamic error, StackTrace stackTrace) {
-        caughtError.complete(true);
-      }));
-      expect(await caughtError.future, true);
-    });
-    expect(uncaught, false);
-  });
-
-  test('resolve errors in the completer will be caught', () async {
-    bool uncaught = false;
-    final Zone testZone = Zone.current.fork(specification: ZoneSpecification(
-      handleUncaughtError: (Zone zone, ZoneDelegate zoneDelegate, Zone parent, Object error, StackTrace stackTrace) {
-        uncaught = true;
-      },
-    ));
-    await testZone.run(() async {
-      final ImageProvider imageProvider = LoadErrorCompleterImageProvider();
-      final Completer<bool> caughtError = Completer<bool>();
-      FlutterError.onError = (FlutterErrorDetails details) {
-        throw Error();
-      };
-      final ImageStream result = imageProvider.resolve(ImageConfiguration.empty);
-      result.addListener(ImageStreamListener((ImageInfo info, bool syncCall) {
-      }, onError: (dynamic error, StackTrace stackTrace) {
-        caughtError.complete(true);
-      }));
-      expect(await caughtError.future, true);
-    });
-    expect(uncaught, false);
   });
 
   test('File image with empty file throws expected error and evicts from cache', () async {
@@ -136,20 +88,20 @@ void main() {
     final File file = fs.file('/empty.png')..createSync(recursive: true);
     final FileImage provider = FileImage(file);
 
-    expect(provider.load(provider, (Uint8List bytes, {int cacheWidth, int cacheHeight, bool allowUpscaling}) async {
+    expect(provider.load(provider, (Uint8List bytes, {int? cacheWidth, int? cacheHeight, bool? allowUpscaling}) async {
       return Future<Codec>.value(FakeCodec());
     }), isA<MultiFrameImageStreamCompleter>());
 
     expect(await error.future, isStateError);
   });
 
-  Future<Codec> _decoder(Uint8List bytes, {int cacheWidth, int cacheHeight, bool allowUpscaling}) async {
+  Future<Codec> _decoder(Uint8List bytes, {int? cacheWidth, int? cacheHeight, bool? allowUpscaling}) async {
     return FakeCodec();
   }
 
   test('File image sets tag', () async {
     final MemoryFileSystem fs = MemoryFileSystem();
-    final File file = fs.file('/blue.png')..createSync(recursive: true)..writeAsBytesSync(kBlueRectPng);
+    final File file = fs.file('/blue.png')..createSync(recursive: true)..writeAsBytesSync(kBlueSquarePng);
     final FileImage provider = FileImage(file);
 
     final MultiFrameImageStreamCompleter completer = provider.load(provider, _decoder) as MultiFrameImageStreamCompleter;
@@ -158,7 +110,7 @@ void main() {
   });
 
   test('Memory image sets tag', () async {
-    final Uint8List bytes = Uint8List.fromList(kBlueRectPng);
+    final Uint8List bytes = Uint8List.fromList(kBlueSquarePng);
     final MemoryImage provider = MemoryImage(bytes);
 
     final MultiFrameImageStreamCompleter completer = provider.load(provider, _decoder) as MultiFrameImageStreamCompleter;
@@ -176,7 +128,7 @@ void main() {
   });
 
   test('Resize image sets tag', () async {
-    final Uint8List bytes = Uint8List.fromList(kBlueRectPng);
+    final Uint8List bytes = Uint8List.fromList(kBlueSquarePng);
     final ResizeImage provider = ResizeImage(MemoryImage(bytes), width: 40, height: 40);
     final MultiFrameImageStreamCompleter completer = provider.load(
       await provider.obtainKey(ImageConfiguration.empty),
@@ -206,6 +158,6 @@ class FakeCodec implements Codec {
 class _TestAssetBundle extends CachingAssetBundle {
   @override
   Future<ByteData> load(String key) async {
-    return Uint8List.fromList(kBlueRectPng).buffer.asByteData();
+    return Uint8List.fromList(kBlueSquarePng).buffer.asByteData();
   }
 }

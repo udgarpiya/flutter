@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('initialLifecycleState is used to init state paused', (WidgetTester tester) async {
@@ -15,7 +13,7 @@ void main() {
     // Mock the Window to provide paused as the AppLifecycleState
     final TestWidgetsFlutterBinding binding = tester.binding;
     // Use paused as the initial state.
-    binding.window.initialLifecycleStateTestValue = 'AppLifecycleState.paused';
+    binding.platformDispatcher.initialLifecycleStateTestValue = 'AppLifecycleState.paused';
     binding.readTestInitialLifecycleStateFromNativeWindow(); // Re-attempt the initialization.
 
     // The lifecycleState should now be the state we passed above,

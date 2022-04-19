@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('Does not animate if already at target position', (WidgetTester tester) async {
@@ -15,8 +13,8 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: ListView(
-          children: List<Widget>.generate(80, (int i) => Text('$i', textDirection: TextDirection.ltr)),
           controller: controller,
+          children: List<Widget>.generate(80, (int i) => Text('$i', textDirection: TextDirection.ltr)),
         ),
       ),
     );
@@ -35,8 +33,8 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: ListView(
-          children: List<Widget>.generate(80, (int i) => Text('$i', textDirection: TextDirection.ltr)),
           controller: controller,
+          children: List<Widget>.generate(80, (int i) => Text('$i', textDirection: TextDirection.ltr)),
         ),
       ),
     );
@@ -58,8 +56,8 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: ListView(
-          children: List<Widget>.generate(80, (int i) => Text('$i', textDirection: TextDirection.ltr)),
           controller: controller,
+          children: List<Widget>.generate(80, (int i) => Text('$i', textDirection: TextDirection.ltr)),
         ),
       ),
     );

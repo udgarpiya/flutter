@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'basic.dart';
 import 'framework.dart';
 import 'layout_builder.dart';
@@ -31,10 +29,9 @@ class OrientationBuilder extends StatelessWidget {
   ///
   /// The [builder] argument must not be null.
   const OrientationBuilder({
-    Key key,
-    @required this.builder,
-  }) : assert(builder != null),
-       super(key: key);
+    super.key,
+    required this.builder,
+  }) : assert(builder != null);
 
   /// Builds the widgets below this widget given this widget's orientation.
   ///

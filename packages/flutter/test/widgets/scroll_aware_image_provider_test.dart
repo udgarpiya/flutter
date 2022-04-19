@@ -2,34 +2,39 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
+import 'dart:ui' as ui show Image;
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../painting/image_test_utils.dart';
-import '../painting/mocks_for_image_cache.dart' show TestImage;
 
 void main() {
+
+  late ui.Image testImage;
+
+  setUpAll(() async {
+    testImage = await createTestImage(width: 10, height: 10);
+  });
+
   tearDown(() {
     imageCache.clear();
   });
 
   T _findPhysics<T extends ScrollPhysics>(WidgetTester tester) {
-    return Scrollable.of(find.byType(TestWidget).evaluate().first).position.physics as T;
+    return Scrollable.of(find.byType(TestWidget).evaluate().first)!.position.physics as T;
   }
 
   ScrollMetrics _findMetrics(WidgetTester tester) {
-    return Scrollable.of(find.byType(TestWidget).evaluate().first).position;
+    return Scrollable.of(find.byType(TestWidget).evaluate().first)!.position;
   }
 
   testWidgets('ScrollAwareImageProvider does not delay if widget is not in scrollable', (WidgetTester tester) async {
     final GlobalKey<TestWidgetState> key = GlobalKey<TestWidgetState>();
     await tester.pumpWidget(TestWidget(key));
 
-    final DisposableBuildContext context = DisposableBuildContext(key.currentState);
-    const TestImage testImage = TestImage(width: 10, height: 10);
-    final TestImageProvider testImageProvider = TestImageProvider(testImage);
+    final DisposableBuildContext context = DisposableBuildContext(key.currentState!);
+    final TestImageProvider testImageProvider = TestImageProvider(testImage.clone());
     final ScrollAwareImageProvider<TestImageProvider> imageProvider = ScrollAwareImageProvider<TestImageProvider>(
       context: context,
       imageProvider: testImageProvider,
@@ -42,7 +47,7 @@ void main() {
 
     expect(testImageProvider.configuration, ImageConfiguration.empty);
     expect(stream.completer, isNotNull);
-    expect(stream.completer.hasListeners, true);
+    expect(stream.completer!.hasListeners, true);
     expect(imageCache.containsKey(testImageProvider), true);
     expect(imageCache.currentSize, 0);
 
@@ -63,9 +68,8 @@ void main() {
       ),
     ));
 
-    final DisposableBuildContext context = DisposableBuildContext(key.currentState);
-    const TestImage testImage = TestImage(width: 10, height: 10);
-    final TestImageProvider testImageProvider = TestImageProvider(testImage);
+    final DisposableBuildContext context = DisposableBuildContext(key.currentState!);
+    final TestImageProvider testImageProvider = TestImageProvider(testImage.clone());
     final ScrollAwareImageProvider<TestImageProvider> imageProvider = ScrollAwareImageProvider<TestImageProvider>(
       context: context,
       imageProvider: testImageProvider,
@@ -78,7 +82,7 @@ void main() {
 
     expect(testImageProvider.configuration, ImageConfiguration.empty);
     expect(stream.completer, isNotNull);
-    expect(stream.completer.hasListeners, true);
+    expect(stream.completer!.hasListeners, true);
     expect(imageCache.containsKey(testImageProvider), true);
     expect(imageCache.currentSize, 0);
 
@@ -104,9 +108,8 @@ void main() {
       ),
     ));
 
-    final DisposableBuildContext context = DisposableBuildContext(keys.last.currentState);
-    const TestImage testImage = TestImage(width: 10, height: 10);
-    final TestImageProvider testImageProvider = TestImageProvider(testImage);
+    final DisposableBuildContext context = DisposableBuildContext(keys.last.currentState!);
+    final TestImageProvider testImageProvider = TestImageProvider(testImage.clone());
     final ScrollAwareImageProvider<TestImageProvider> imageProvider = ScrollAwareImageProvider<TestImageProvider>(
       context: context,
       imageProvider: testImageProvider,
@@ -137,7 +140,7 @@ void main() {
 
     expect(testImageProvider.configuration, ImageConfiguration.empty);
     expect(stream.completer, isNotNull);
-    expect(stream.completer.hasListeners, true);
+    expect(stream.completer!.hasListeners, true);
     expect(imageCache.containsKey(testImageProvider), true);
     expect(imageCache.currentSize, 0);
 
@@ -162,9 +165,8 @@ void main() {
       ),
     ));
 
-    final DisposableBuildContext context = DisposableBuildContext(keys.last.currentState);
-    const TestImage testImage = TestImage(width: 10, height: 10);
-    final TestImageProvider testImageProvider = TestImageProvider(testImage);
+    final DisposableBuildContext context = DisposableBuildContext(keys.last.currentState!);
+    final TestImageProvider testImageProvider = TestImageProvider(testImage.clone());
     final ScrollAwareImageProvider<TestImageProvider> imageProvider = ScrollAwareImageProvider<TestImageProvider>(
       context: context,
       imageProvider: testImageProvider,
@@ -204,7 +206,7 @@ void main() {
 
     expect(testImageProvider.configuration, ImageConfiguration.empty);
     expect(stream.completer, isNotNull);
-    expect(stream.completer.hasListeners, true);
+    expect(stream.completer!.hasListeners, true);
 
     expect(imageCache.containsKey(testImageProvider), true);
     expect(imageCache.currentSize, 0);
@@ -230,9 +232,8 @@ void main() {
       ),
     ));
 
-    final DisposableBuildContext context = DisposableBuildContext(keys.last.currentState);
-    const TestImage testImage = TestImage(width: 10, height: 10);
-    final TestImageProvider testImageProvider = TestImageProvider(testImage);
+    final DisposableBuildContext context = DisposableBuildContext(keys.last.currentState!);
+    final TestImageProvider testImageProvider = TestImageProvider(testImage.clone());
     final ScrollAwareImageProvider<TestImageProvider> imageProvider = ScrollAwareImageProvider<TestImageProvider>(
       context: context,
       imageProvider: testImageProvider,
@@ -296,9 +297,8 @@ void main() {
       ),
     ));
 
-    final DisposableBuildContext context = DisposableBuildContext(key.currentState);
-    const TestImage testImage = TestImage(width: 10, height: 10);
-    final TestImageProvider testImageProvider = TestImageProvider(testImage);
+    final DisposableBuildContext context = DisposableBuildContext(key.currentState!);
+    final TestImageProvider testImageProvider = TestImageProvider(testImage.clone());
     final ScrollAwareImageProvider<TestImageProvider> imageProvider = ScrollAwareImageProvider<TestImageProvider>(
       context: context,
       imageProvider: testImageProvider,
@@ -348,9 +348,8 @@ void main() {
       ),
     ));
 
-    final DisposableBuildContext context = DisposableBuildContext(key.currentState);
-    const TestImage testImage = TestImage(width: 10, height: 10);
-    final TestImageProvider testImageProvider = TestImageProvider(testImage);
+    final DisposableBuildContext context = DisposableBuildContext(key.currentState!);
+    final TestImageProvider testImageProvider = TestImageProvider(testImage.clone());
     final ScrollAwareImageProvider<TestImageProvider> imageProvider = ScrollAwareImageProvider<TestImageProvider>(
       context: context,
       imageProvider: testImageProvider,
@@ -369,9 +368,9 @@ void main() {
     expect(imageCache.currentSize, 0);
 
     // Occupy the only slot in the cache with another image.
-    final TestImageProvider testImageProvider2 = TestImageProvider(const TestImage());
+    final TestImageProvider testImageProvider2 = TestImageProvider(testImage.clone());
     testImageProvider2.complete();
-    await precacheImage(testImageProvider2, context.context);
+    await precacheImage(testImageProvider2, context.context!);
     expect(imageCache.containsKey(testImageProvider), false);
     expect(imageCache.containsKey(testImageProvider2), true);
     expect(imageCache.currentSize, 1);
@@ -400,7 +399,7 @@ void main() {
 }
 
 class TestWidget extends StatefulWidget {
-  const TestWidget(Key key) : super(key: key);
+  const TestWidget(Key? key) : super(key: key);
 
   @override
   State<TestWidget> createState() => TestWidgetState();
@@ -412,12 +411,12 @@ class TestWidgetState extends State<TestWidget> {
 }
 
 class RecordingPhysics extends ScrollPhysics {
-  RecordingPhysics({ ScrollPhysics parent }) : super(parent: parent);
+  RecordingPhysics({ super.parent });
 
   final List<double> velocities = <double>[];
 
   @override
-  RecordingPhysics applyTo(ScrollPhysics ancestor) {
+  RecordingPhysics applyTo(ScrollPhysics? ancestor) {
     return RecordingPhysics(parent: buildParent(ancestor));
   }
 
@@ -432,12 +431,12 @@ class RecordingPhysics extends ScrollPhysics {
 // times without worrying about actual scrolling mechanics.
 // ignore: must_be_immutable
 class ControllablePhysics extends ScrollPhysics {
-  ControllablePhysics({ ScrollPhysics parent }) : super(parent: parent);
+  ControllablePhysics({ super.parent });
 
   bool recommendDeferredLoadingValue = false;
 
   @override
-  ControllablePhysics applyTo(ScrollPhysics ancestor) {
+  ControllablePhysics applyTo(ScrollPhysics? ancestor) {
     return ControllablePhysics(parent: buildParent(ancestor));
   }
 

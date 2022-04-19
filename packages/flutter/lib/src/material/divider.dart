@@ -2,16 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/widgets.dart';
-import 'package:flutter/painting.dart';
 
 import 'divider_theme.dart';
 import 'theme.dart';
 
 // Examples can assume:
-// BuildContext context;
+// late BuildContext context;
 
 /// A thin horizontal line, with padding on either side.
 ///
@@ -26,8 +23,7 @@ import 'theme.dart';
 /// The box's total height is controlled by [height]. The appropriate
 /// padding is automatically computed from the height.
 ///
-/// {@tool dartpad --template=stateless_widget_scaffold}
-///
+/// {@tool dartpad}
 /// This sample shows how to display a Divider between an orange and blue box
 /// inside a column. The Divider is 20 logical pixels in height and contains a
 /// vertically centered black line that is 5 logical pixels thick. The black
@@ -35,44 +31,14 @@ import 'theme.dart';
 ///
 /// ![](https://flutter.github.io/assets-for-api-docs/assets/material/divider.png)
 ///
-/// ```dart
-/// Widget build(BuildContext context) {
-///   return Center(
-///     child: Column(
-///       children: <Widget>[
-///         Expanded(
-///           child: Container(
-///             color: Colors.amber,
-///             child: const Center(
-///               child: Text('Above'),
-///             ),
-///           ),
-///         ),
-///         const Divider(
-///           color: Colors.black,
-///           height: 20,
-///           thickness: 5,
-///           indent: 20,
-///           endIndent: 0,
-///         ),
-///         Expanded(
-///           child: Container(
-///             color: Colors.blue,
-///             child: const Center(
-///               child: Text('Below'),
-///             ),
-///           ),
-///         ),
-///       ],
-///     ),
-///   );
-/// }
-/// ```
+/// ** See code in examples/api/lib/material/divider/divider.0.dart **
 /// {@end-tool}
+///
 /// See also:
 ///
 ///  * [PopupMenuDivider], which is the equivalent but for popup menus.
 ///  * [ListTile.divideTiles], another approach to dividing widgets in a list.
+///  * [VerticalDivider], which is the vertical analog of this widget.
 ///  * <https://material.io/design/components/dividers.html>
 class Divider extends StatelessWidget {
   /// Creates a material design divider.
@@ -80,7 +46,7 @@ class Divider extends StatelessWidget {
   /// The [height], [thickness], [indent], and [endIndent] must be null or
   /// non-negative.
   const Divider({
-    Key key,
+    super.key,
     this.height,
     this.thickness,
     this.indent,
@@ -89,8 +55,7 @@ class Divider extends StatelessWidget {
   }) : assert(height == null || height >= 0.0),
        assert(thickness == null || thickness >= 0.0),
        assert(indent == null || indent >= 0.0),
-       assert(endIndent == null || endIndent >= 0.0),
-       super(key: key);
+       assert(endIndent == null || endIndent >= 0.0);
 
 
   /// The divider's height extent.
@@ -100,7 +65,7 @@ class Divider extends StatelessWidget {
   ///
   /// If this is null, then the [DividerThemeData.space] is used. If that is
   /// also null, then this defaults to 16.0.
-  final double height;
+  final double? height;
 
   /// The thickness of the line drawn within the divider.
   ///
@@ -109,19 +74,19 @@ class Divider extends StatelessWidget {
   ///
   /// If this is null, then the [DividerThemeData.thickness] is used. If
   /// that is also null, then this defaults to 0.0.
-  final double thickness;
+  final double? thickness;
 
   /// The amount of empty space to the leading edge of the divider.
   ///
   /// If this is null, then the [DividerThemeData.indent] is used. If that is
   /// also null, then this defaults to 0.0.
-  final double indent;
+  final double? indent;
 
   /// The amount of empty space to the trailing edge of the divider.
   ///
   /// If this is null, then the [DividerThemeData.endIndent] is used. If that is
   /// also null, then this defaults to 0.0.
-  final double endIndent;
+  final double? endIndent;
 
   /// The color to use when painting the line.
   ///
@@ -131,12 +96,12 @@ class Divider extends StatelessWidget {
   /// {@tool snippet}
   ///
   /// ```dart
-  /// Divider(
+  /// const Divider(
   ///   color: Colors.deepOrange,
   /// )
   /// ```
   /// {@end-tool}
-  final Color color;
+  final Color? color;
 
   /// Computes the [BorderSide] that represents a divider.
   ///
@@ -167,8 +132,8 @@ class Divider extends StatelessWidget {
   /// )
   /// ```
   /// {@end-tool}
-  static BorderSide createBorderSide(BuildContext context, { Color color, double width }) {
-    final Color effectiveColor = color
+  static BorderSide createBorderSide(BuildContext? context, { Color? color, double? width }) {
+    final Color? effectiveColor = color
         ?? (context != null ? (DividerTheme.of(context).color ?? Theme.of(context).dividerColor) : null);
     final double effectiveWidth =  width
         ?? (context != null ? DividerTheme.of(context).thickness : null)
@@ -221,9 +186,19 @@ class Divider extends StatelessWidget {
 /// The box's total width is controlled by [width]. The appropriate
 /// padding is automatically computed from the width.
 ///
+/// {@tool dartpad}
+/// This sample shows how to display a [VerticalDivider] between a purple and orange box
+/// inside a [Row]. The [VerticalDivider] is 20 logical pixels in width and contains a
+/// horizontally centered black line that is 1 logical pixels thick. The grey
+/// line is indented by 20 logical pixels.
+///
+/// ** See code in examples/api/lib/material/divider/vertical_divider.0.dart **
+/// {@end-tool}
+///
 /// See also:
 ///
 ///  * [ListView.separated], which can be used to generate vertical dividers.
+///  * [Divider], which is the horizontal analog of this widget.
 ///  * <https://material.io/design/components/dividers.html>
 class VerticalDivider extends StatelessWidget {
   /// Creates a material design vertical divider.
@@ -231,7 +206,7 @@ class VerticalDivider extends StatelessWidget {
   /// The [width], [thickness], [indent], and [endIndent] must be null or
   /// non-negative.
   const VerticalDivider({
-    Key key,
+    super.key,
     this.width,
     this.thickness,
     this.indent,
@@ -240,8 +215,7 @@ class VerticalDivider extends StatelessWidget {
   }) : assert(width == null || width >= 0.0),
        assert(thickness == null || thickness >= 0.0),
        assert(indent == null || indent >= 0.0),
-       assert(endIndent == null || endIndent >= 0.0),
-       super(key: key);
+       assert(endIndent == null || endIndent >= 0.0);
 
   /// The divider's width.
   ///
@@ -250,7 +224,7 @@ class VerticalDivider extends StatelessWidget {
   ///
   /// If this is null, then the [DividerThemeData.space] is used. If that is
   /// also null, then this defaults to 16.0.
-  final double width;
+  final double? width;
 
   /// The thickness of the line drawn within the divider.
   ///
@@ -259,19 +233,19 @@ class VerticalDivider extends StatelessWidget {
   ///
   /// If this is null, then the [DividerThemeData.thickness] is used which
   /// defaults to 0.0.
-  final double thickness;
+  final double? thickness;
 
   /// The amount of empty space on top of the divider.
   ///
   /// If this is null, then the [DividerThemeData.indent] is used. If that is
   /// also null, then this defaults to 0.0.
-  final double indent;
+  final double? indent;
 
   /// The amount of empty space under the divider.
   ///
   /// If this is null, then the [DividerThemeData.endIndent] is used. If that is
   /// also null, then this defaults to 0.0.
-  final double endIndent;
+  final double? endIndent;
 
   /// The color to use when painting the line.
   ///
@@ -281,12 +255,12 @@ class VerticalDivider extends StatelessWidget {
   /// {@tool snippet}
   ///
   /// ```dart
-  /// Divider(
+  /// const Divider(
   ///   color: Colors.deepOrange,
   /// )
   /// ```
   /// {@end-tool}
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {

@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -25,7 +21,7 @@ void main() {
     await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       'flutter/system',
       SystemChannels.system.codec.encodeMessage(data),
-      (ByteData data) { },
+      (ByteData? data) { },
     );
     final RenderObject renderObject = tester.renderObject(find.text('text widget'));
     expect(renderObject.debugNeedsLayout, isTrue);
@@ -43,7 +39,7 @@ void main() {
     await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       'flutter/system',
       SystemChannels.system.codec.encodeMessage(data),
-        (ByteData data) { },
+        (ByteData? data) { },
     );
     final EditableTextState state = tester.state(find.byType(EditableText));
     expect(state.renderEditable.debugNeedsLayout, isTrue);
@@ -64,7 +60,7 @@ void main() {
     await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       'flutter/system',
       SystemChannels.system.codec.encodeMessage(data),
-        (ByteData data) { },
+        (ByteData? data) { },
     );
     final RenderObject renderObject = tester.renderObject(find.byType(Banner));
     expect(renderObject.debugNeedsPaint, isTrue);
@@ -79,6 +75,7 @@ void main() {
       ),
     );
     final dynamic state = tester.state(find.byType(CupertinoDatePicker));
+    // ignore: avoid_dynamic_calls
     final Map<int, double> cache = state.estimatedColumnWidths as Map<int, double>;
     expect(cache.isNotEmpty, isTrue);
     const Map<String, dynamic> data = <String, dynamic>{
@@ -87,7 +84,7 @@ void main() {
     await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       'flutter/system',
       SystemChannels.system.codec.encodeMessage(data),
-        (ByteData data) { },
+        (ByteData? data) { },
     );
     // Cache should be cleaned.
     expect(cache.isEmpty, isTrue);
@@ -105,6 +102,7 @@ void main() {
       ),
     );
     final dynamic state = tester.state(find.byType(CupertinoDatePicker));
+    // ignore: avoid_dynamic_calls
     final Map<int, double> cache = state.estimatedColumnWidths as Map<int, double>;
     // Simulates font missing.
     cache.clear();
@@ -114,7 +112,7 @@ void main() {
     await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       'flutter/system',
       SystemChannels.system.codec.encodeMessage(data),
-        (ByteData data) { },
+        (ByteData? data) { },
     );
     // Cache should be replenished
     expect(cache.isNotEmpty, isTrue);
@@ -132,8 +130,11 @@ void main() {
     );
     final dynamic state = tester.state(find.byType(CupertinoTimerPicker));
     // Simulates wrong metrics due to font missing.
+    // ignore: avoid_dynamic_calls
     state.numberLabelWidth = 0.0;
+    // ignore: avoid_dynamic_calls
     state.numberLabelHeight = 0.0;
+    // ignore: avoid_dynamic_calls
     state.numberLabelBaseline = 0.0;
     const Map<String, dynamic> data = <String, dynamic>{
       'type': 'fontsChange',
@@ -141,11 +142,14 @@ void main() {
     await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       'flutter/system',
       SystemChannels.system.codec.encodeMessage(data),
-        (ByteData data) { },
+        (ByteData? data) { },
     );
     // Metrics should be refreshed
+    // ignore: avoid_dynamic_calls
     expect(state.numberLabelWidth - 46.0 < precisionErrorTolerance, isTrue);
+    // ignore: avoid_dynamic_calls
     expect(state.numberLabelHeight - 23.0 < precisionErrorTolerance, isTrue);
+    // ignore: avoid_dynamic_calls
     expect(state.numberLabelBaseline - 18.400070190429688 < precisionErrorTolerance, isTrue);
     final Element element = tester.element(find.byType(CupertinoTimerPicker));
     expect(element.dirty, isTrue);
@@ -168,11 +172,11 @@ void main() {
     await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       'flutter/system',
       SystemChannels.system.codec.encodeMessage(data),
-        (ByteData data) { },
+        (ByteData? data) { },
     );
     final RenderObject renderObject = tester.renderObject(find.byType(RangeSlider));
 
-    bool sliderBoxNeedsLayout;
+    late bool sliderBoxNeedsLayout;
     renderObject.visitChildren((RenderObject child) {sliderBoxNeedsLayout = child.debugNeedsLayout;});
     expect(sliderBoxNeedsLayout, isTrue);
   });
@@ -194,7 +198,7 @@ void main() {
     await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       'flutter/system',
       SystemChannels.system.codec.encodeMessage(data),
-        (ByteData data) { },
+        (ByteData? data) { },
     );
     // _RenderSlider is the last render object in the tree.
     final RenderObject renderObject = tester.allRenderObjects.last;
@@ -214,11 +218,11 @@ void main() {
                     showTimePicker(
                       context: context,
                       initialTime: const TimeOfDay(hour: 7, minute: 0),
-                      builder: (BuildContext context, Widget child) {
+                      builder: (BuildContext context, Widget? child) {
                         return Directionality(
                           key: const Key('parent'),
                           textDirection: TextDirection.ltr,
-                          child: child,
+                          child: child!,
                         );
                       },
                     );
@@ -238,7 +242,7 @@ void main() {
     await ServicesBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       'flutter/system',
       SystemChannels.system.codec.encodeMessage(data),
-        (ByteData data) { },
+        (ByteData? data) { },
     );
     final RenderObject renderObject = tester.renderObject(
       find.descendant(

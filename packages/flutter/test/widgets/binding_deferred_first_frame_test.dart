@@ -2,14 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:async';
 
-import 'package:flutter/rendering.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 const String _actualContent = 'Actual Content';
 const String _loading = 'Loading...';
@@ -90,7 +88,7 @@ void main() {
 }
 
 class _DeferringWidget extends StatefulWidget {
-  const _DeferringWidget({Key key, this.loader}) : super(key: key);
+  const _DeferringWidget({required Key key, required this.loader}) : super(key: key);
 
   final Future<void> loader;
 

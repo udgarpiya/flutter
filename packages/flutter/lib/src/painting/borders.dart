@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'dart:math' as math;
 import 'dart:ui' as ui show lerpDouble;
 
@@ -39,14 +38,14 @@ enum BorderStyle {
 ///
 /// ```dart
 /// Container(
-///   padding: EdgeInsets.all(8.0),
+///   padding: const EdgeInsets.all(8.0),
 ///   decoration: BoxDecoration(
 ///     border: Border(
 ///       top: BorderSide(width: 16.0, color: Colors.lightBlue.shade50),
 ///       bottom: BorderSide(width: 16.0, color: Colors.lightBlue.shade900),
 ///     ),
 ///   ),
-///   child: Text('Flutter in the sky', textAlign: TextAlign.center),
+///   child: const Text('Flutter in the sky', textAlign: TextAlign.center),
 /// )
 /// ```
 /// {@end-tool}
@@ -187,8 +186,8 @@ class BorderSide {
     }
   }
 
-  /// Whether the two given [BorderSide]s can be merged using [new
-  /// BorderSide.merge].
+  /// Whether the two given [BorderSide]s can be merged using
+  /// [BorderSide.merge].
   ///
   /// Two sides can be merged if one or both are zero-width with
   /// [BorderStyle.none], or if they both have the same color and style.
@@ -247,7 +246,6 @@ class BorderSide {
     return BorderSide(
       color: Color.lerp(colorA, colorB, t)!,
       width: width,
-      style: BorderStyle.solid,
     );
   }
 
@@ -264,7 +262,7 @@ class BorderSide {
   }
 
   @override
-  int get hashCode => hashValues(color, width, style);
+  int get hashCode => Object.hash(color, width, style);
 
   @override
   String toString() => '${objectRuntimeType(this, 'BorderSide')}($color, ${width.toStringAsFixed(1)}, $style)';
@@ -567,7 +565,7 @@ class _CompoundBorder extends ShapeBorder {
   @override
   ShapeBorder scale(double t) {
     return _CompoundBorder(
-      borders.map<ShapeBorder>((ShapeBorder border) => border.scale(t)).toList()
+      borders.map<ShapeBorder>((ShapeBorder border) => border.scale(t)).toList(),
     );
   }
 
@@ -641,7 +639,7 @@ class _CompoundBorder extends ShapeBorder {
   }
 
   @override
-  int get hashCode => hashList(borders);
+  int get hashCode => Object.hashAll(borders);
 
   @override
   String toString() {

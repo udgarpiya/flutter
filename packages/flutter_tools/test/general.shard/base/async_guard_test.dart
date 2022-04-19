@@ -4,34 +4,45 @@
 
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_tools/src/base/async_guard.dart';
 import 'package:flutter_tools/src/base/common.dart';
-import 'package:fake_async/fake_async.dart';
 
 import '../../src/common.dart';
 
 Future<void> asyncError() {
   final Completer<void> completer = Completer<void>();
   final Completer<void> errorCompleter = Completer<void>();
-  errorCompleter.completeError('Async Doom', StackTrace.current);
+  errorCompleter.completeError(_CustomException('Async Doom'), StackTrace.current);
   return completer.future;
 }
 
+/// Specialized exception to be caught.
+class _CustomException implements Exception {
+  _CustomException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+
 Future<void> syncError() {
-  throw 'Sync Doom';
+  throw _CustomException('Sync Doom');
 }
 
 Future<void> syncAndAsyncError() {
   final Completer<void> errorCompleter = Completer<void>();
-  errorCompleter.completeError('Async Doom', StackTrace.current);
-  throw 'Sync Doom';
+  errorCompleter.completeError(_CustomException('Async Doom'), StackTrace.current);
+  throw _CustomException('Sync Doom');
 }
 
 Future<void> delayedThrow(FakeAsync time) {
   final Future<void> result =
     Future<void>.delayed(const Duration(milliseconds: 10))
-      .then((_) {
-        throw 'Delayed Doom';
+      .then((_) async {
+        throw _CustomException('Delayed Doom');
       });
   time.elapse(const Duration(seconds: 1));
   time.flushMicrotasks();
@@ -39,10 +50,10 @@ Future<void> delayedThrow(FakeAsync time) {
 }
 
 void main() {
-  Completer<void> caughtInZone;
+  late Completer<void> caughtInZone;
   bool caughtByZone = false;
   bool caughtByHandler = false;
-  Zone zone;
+  late Zone zone;
 
   setUp(() {
     caughtInZone = Completer<void>();
@@ -69,7 +80,7 @@ void main() {
       try {
         // Completer is required or else we timeout.
         await Future.any(<Future<void>>[asyncError(), caughtInZone.future]);
-      } on String {
+      } on _CustomException {
         caughtByHandler = true;
       }
     });
@@ -83,7 +94,7 @@ void main() {
       try {
         // Completer is required or else we timeout.
         await Future.any(<Future<void>>[syncAndAsyncError(), caughtInZone.future]);
-      } on String {
+      } on _CustomException {
         caughtByHandler = true;
       }
     });
@@ -96,7 +107,7 @@ void main() {
     await zone.run(() async {
       try {
         await syncError();
-      } on String {
+      } on _CustomException {
         caughtByHandler = true;
       }
     });
@@ -109,7 +120,7 @@ void main() {
     await zone.run(() async {
       try {
         await asyncGuard(syncError);
-      } on String {
+      } on _CustomException {
         caughtByHandler = true;
       }
     });
@@ -123,7 +134,7 @@ void main() {
     await zone.run(() async {
       try {
         await asyncGuard(asyncError);
-      } on String {
+      } on _CustomException {
         caughtByHandler = true;
       }
     });
@@ -136,7 +147,7 @@ void main() {
     await zone.run(() async {
       try {
         await asyncGuard(syncAndAsyncError);
-      } on String {
+      } on _CustomException {
         caughtByHandler = true;
       }
     });
@@ -152,20 +163,20 @@ void main() {
 
     final Completer<void> completer = Completer<void>();
     await FakeAsync().run((FakeAsync time) {
-      unawaited(runZoned(() async {
+      unawaited(runZonedGuarded(() async {
         final Future<void> f = asyncGuard<void>(() => delayedThrow(time))
           .catchError((Object e, StackTrace s) {
             caughtByCatchError = true;
           });
         try {
           await f;
-        } on String {
+        } on _CustomException {
           caughtByHandler = true;
         }
         if (!completer.isCompleted) {
           completer.complete(null);
         }
-      }, onError: (Object e, StackTrace s) {
+      }, (Object e, StackTrace s) {
         caughtByZone = true;
         if (!completer.isCompleted) {
           completer.complete(null);
@@ -188,7 +199,7 @@ void main() {
 
     final Completer<void> completer = Completer<void>();
     await FakeAsync().run((FakeAsync time) {
-      unawaited(runZoned(() async {
+      unawaited(runZonedGuarded(() async {
         final Future<void> f = asyncGuard<void>(
           () => delayedThrow(time),
           onError: (Object e, StackTrace s) {
@@ -197,13 +208,13 @@ void main() {
         );
         try {
           await f;
-        } on String {
+        } on _CustomException {
           caughtByHandler = true;
         }
         if (!completer.isCompleted) {
           completer.complete(null);
         }
-      }, onError: (Object e, StackTrace s) {
+      }, (Object e, StackTrace s) {
         caughtByZone = true;
         if (!completer.isCompleted) {
           completer.complete(null);
@@ -226,7 +237,7 @@ void main() {
 
     final Completer<void> completer = Completer<void>();
     await FakeAsync().run((FakeAsync time) {
-      unawaited(runZoned(() async {
+      unawaited(runZonedGuarded(() async {
         final Future<void> f = asyncGuard<void>(
           () => delayedThrow(time),
           onError: (Object e) {
@@ -235,13 +246,13 @@ void main() {
         );
         try {
           await f;
-        } on String {
+        } on _CustomException {
           caughtByHandler = true;
         }
         if (!completer.isCompleted) {
           completer.complete(null);
         }
-      }, onError: (Object e, StackTrace s) {
+      }, (Object e, StackTrace s) {
         caughtByZone = true;
         if (!completer.isCompleted) {
           completer.complete(null);
@@ -265,23 +276,23 @@ void main() {
 
     final Completer<void> completer = Completer<void>();
     await FakeAsync().run((FakeAsync time) {
-      unawaited(runZoned(() async {
+      unawaited(runZonedGuarded(() async {
         final Future<void> f = asyncGuard<void>(
           () => delayedThrow(time),
-          onError: (Object e, [StackTrace s]) {
+          onError: (Object e, [StackTrace? s]) {
             caughtByOnError = true;
             nonNullStackTrace = s != null;
           },
         );
         try {
           await f;
-        } on String {
+        } on _CustomException {
           caughtByHandler = true;
         }
         if (!completer.isCompleted) {
           completer.complete(null);
         }
-      }, onError: (Object e, StackTrace s) {
+      }, (Object e, StackTrace s) {
         caughtByZone = true;
         if (!completer.isCompleted) {
           completer.complete(null);

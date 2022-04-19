@@ -7,8 +7,18 @@
 import 'dart:convert' hide utf8;
 import 'dart:convert' as cnv show utf8, Utf8Decoder;
 
+import 'package:meta/meta.dart';
+
 import 'base/common.dart';
 export 'dart:convert' hide utf8, Utf8Codec, Utf8Decoder;
+
+/// The original utf8 encoding for testing overrides only.
+///
+/// Attempting to use the flutter tool utf8 decoder will surface an analyzer
+/// warning that overrides cannot change the default value of a named
+/// parameter.
+@visibleForTesting
+const Encoding utf8ForTesting = cnv.utf8;
 
 /// A [Codec] which reports malformed bytes when decoding.
 ///
@@ -36,13 +46,13 @@ class Utf8Decoder extends cnv.Utf8Decoder {
   final bool reportErrors;
 
   @override
-  String convert(List<int> codeUnits, [ int start = 0, int end ]) {
+  String convert(List<int> codeUnits, [ int start = 0, int? end ]) {
     final String result = super.convert(codeUnits, start, end);
     // Finding a unicode replacement character indicates that the input
     // was malformed.
     if (reportErrors && result.contains('\u{FFFD}')) {
       throwToolExit(
-        'Bad UTF-8 encoding found while decoding string: $result. '
+        'Bad UTF-8 encoding (U+FFFD; REPLACEMENT CHARACTER) found while decoding string: $result. '
         'The Flutter team would greatly appreciate if you could file a bug explaining '
         'exactly what you were doing when this happened:\n'
         'https://github.com/flutter/flutter/issues/new/choose\n'

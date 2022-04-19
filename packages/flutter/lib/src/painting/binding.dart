@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'dart:typed_data' show Uint8List;
 import 'dart:ui' as ui show instantiateImageCodec, Codec;
 import 'package:flutter/foundation.dart';
@@ -26,31 +25,43 @@ mixin PaintingBinding on BindingBase, ServicesBinding {
   }
 
   /// The current [PaintingBinding], if one has been created.
-  static PaintingBinding? get instance => _instance;
+  ///
+  /// Provides access to the features exposed by this mixin. The binding must
+  /// be initialized before using this getter; this is typically done by calling
+  /// [runApp] or [WidgetsFlutterBinding.ensureInitialized].
+  static PaintingBinding get instance => BindingBase.checkInstance(_instance);
   static PaintingBinding? _instance;
 
-  /// [ShaderWarmUp] to be executed during [initInstances].
+  /// [ShaderWarmUp] instance to be executed during [initInstances].
+  ///
+  /// Defaults to `null`, meaning no shader warm-up is done. Some platforms may
+  /// not support shader warm-up before at least one frame has been displayed.
   ///
   /// If the application has scenes that require the compilation of complex
-  /// shaders that are not covered by [DefaultShaderWarmUp], it may cause jank
-  /// in the middle of an animation or interaction. In that case, set
-  /// [shaderWarmUp] to a custom [ShaderWarmUp] before calling [initInstances]
-  /// (usually before [runApp] for normal Flutter apps, and before
-  /// [enableFlutterDriverExtension] for Flutter driver tests). Paint the scene
-  /// in the custom [ShaderWarmUp] so Flutter can pre-compile and cache the
-  /// shaders during startup. The warm up is only costly (100ms-200ms,
-  /// depending on the shaders to compile) during the first run after the
-  /// installation or a data wipe. The warm up does not block the main thread
-  /// so there should be no "Application Not Responding" warning.
+  /// shaders, it may cause jank in the middle of an animation or interaction.
+  /// In that case, setting [shaderWarmUp] to a custom [ShaderWarmUp] before
+  /// creating the binding (usually before [runApp] for normal Flutter apps, and
+  /// before [enableFlutterDriverExtension] for Flutter driver tests) may help
+  /// if that object paints the difficult scene in its
+  /// [ShaderWarmUp.warmUpOnCanvas] method, as this allows Flutter to
+  /// pre-compile and cache the required shaders during startup.
   ///
   /// Currently the warm-up happens synchronously on the raster thread which
   /// means the rendering of the first frame on the raster thread will be
   /// postponed until the warm-up is finished.
   ///
+  /// The warm up is only costly (100ms-200ms, depending on the shaders to
+  /// compile) during the first run after the installation or a data wipe. The
+  /// warm up does not block the platform thread so there should be no
+  /// "Application Not Responding" warning.
+  ///
+  /// If this is null, no shader warm-up is executed.
+  ///
   /// See also:
   ///
-  ///  * [ShaderWarmUp], the interface of how this warm up works.
-  static ShaderWarmUp? shaderWarmUp = const DefaultShaderWarmUp();
+  ///  * [ShaderWarmUp], the interface for implementing custom warm-up scenes.
+  ///  * <https://flutter.dev/docs/perf/rendering/shader>
+  static ShaderWarmUp? shaderWarmUp;
 
   /// The singleton that implements the Flutter framework's image cache.
   ///
@@ -59,8 +70,8 @@ mixin PaintingBinding on BindingBase, ServicesBinding {
   ///
   /// The image cache is created during startup by the [createImageCache]
   /// method.
-  ImageCache? get imageCache => _imageCache;
-  ImageCache? _imageCache;
+  ImageCache get imageCache => _imageCache;
+  late ImageCache _imageCache;
 
   /// Creates the [ImageCache] singleton (accessible via [imageCache]).
   ///
@@ -68,7 +79,7 @@ mixin PaintingBinding on BindingBase, ServicesBinding {
   @protected
   ImageCache createImageCache() => ImageCache();
 
-  /// Calls through to [dart:ui] from [ImageCache].
+  /// Calls through to [dart:ui.instantiateImageCodec] from [ImageCache].
   ///
   /// The `cacheWidth` and `cacheHeight` parameters, when specified, indicate
   /// the size to decode the image to.
@@ -86,7 +97,8 @@ mixin PaintingBinding on BindingBase, ServicesBinding {
   /// unnecessary memory usage for images. Callers that wish to display an image
   /// above its native resolution should prefer scaling the canvas the image is
   /// drawn into.
-  Future<ui.Codec> instantiateImageCodec(Uint8List bytes, {
+  Future<ui.Codec> instantiateImageCodec(
+    Uint8List bytes, {
     int? cacheWidth,
     int? cacheHeight,
     bool allowUpscaling = false,
@@ -105,14 +117,14 @@ mixin PaintingBinding on BindingBase, ServicesBinding {
   @override
   void evict(String asset) {
     super.evict(asset);
-    imageCache!.clear();
-    imageCache!.clearLiveImages();
+    imageCache.clear();
+    imageCache.clearLiveImages();
   }
 
   @override
   void handleMemoryPressure() {
     super.handleMemoryPressure();
-    imageCache?.clear();
+    imageCache.clear();
   }
 
   /// Listenable that notifies when the available fonts on the system have
@@ -167,4 +179,4 @@ class _SystemFontsNotifier extends Listenable {
 ///
 /// The image cache is created during startup by the [PaintingBinding]'s
 /// [PaintingBinding.createImageCache] method.
-ImageCache? get imageCache => PaintingBinding.instance!.imageCache;
+ImageCache get imageCache => PaintingBinding.instance.imageCache;

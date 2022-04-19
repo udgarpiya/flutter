@@ -2,18 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../rendering/mock_canvas.dart';
-import '../rendering/rendering_tester.dart';
+import '../rendering/rendering_tester.dart' show TestClipPaintingContext;
 
 class TestSliverChildListDelegate extends SliverChildListDelegate {
-  TestSliverChildListDelegate(List<Widget> children) : super(children);
+  TestSliverChildListDelegate(super.children);
 
   final List<String> log = <String>[];
 
@@ -24,7 +21,7 @@ class TestSliverChildListDelegate extends SliverChildListDelegate {
 }
 
 class Alive extends StatefulWidget {
-  const Alive(this.alive, this.index, { Key key }) : super(key: key);
+  const Alive(this.alive, this.index, { super.key });
   final bool alive;
   final int index;
 
@@ -68,9 +65,7 @@ class _StatefulListViewState extends State<_StatefulListView> {
           children: List<Widget>.generate(200, (int i) {
             return Builder(
               builder: (BuildContext context) {
-                return Container(
-                  child: Alive(widget.aliveCallback(i), i),
-                );
+                return Alive(widget.aliveCallback(i), i);
               },
             );
           }),
@@ -81,6 +76,79 @@ class _StatefulListViewState extends State<_StatefulListView> {
 }
 
 void main() {
+  // Regression test for https://github.com/flutter/flutter/issues/100451
+  testWidgets('ListView.builder respects findChildIndexCallback', (WidgetTester tester) async {
+    bool finderCalled = false;
+    int itemCount = 7;
+    late StateSetter stateSetter;
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            stateSetter = setState;
+            return ListView.builder(
+              itemCount: itemCount,
+              itemBuilder: (BuildContext _, int index) => Container(
+                key: Key('$index'),
+                height: 2000.0,
+              ),
+              findChildIndexCallback: (Key key) {
+                finderCalled = true;
+                return null;
+              },
+            );
+          },
+        ),
+      )
+    );
+    expect(finderCalled, false);
+
+    // Trigger update.
+    stateSetter(() => itemCount = 77);
+    await tester.pump();
+
+    expect(finderCalled, true);
+  });
+
+  // Regression test for https://github.com/flutter/flutter/issues/100451
+  testWidgets('ListView.separator respects findChildIndexCallback', (WidgetTester tester) async {
+    bool finderCalled = false;
+    int itemCount = 7;
+    late StateSetter stateSetter;
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            stateSetter = setState;
+            return ListView.separated(
+              itemCount: itemCount,
+              itemBuilder: (BuildContext _, int index) => Container(
+                key: Key('$index'),
+                height: 2000.0,
+              ),
+              findChildIndexCallback: (Key key) {
+                finderCalled = true;
+                return null;
+              },
+              separatorBuilder: (BuildContext _, int __) => const Divider(),
+            );
+          },
+        ),
+      )
+    );
+    expect(finderCalled, false);
+
+    // Trigger update.
+    stateSetter(() => itemCount = 77);
+    await tester.pump();
+
+    expect(finderCalled, true);
+  });
+
   testWidgets('ListView default control', (WidgetTester tester) async {
     await tester.pumpWidget(
       Directionality(
@@ -100,6 +168,7 @@ void main() {
           itemExtent: 200.0,
           children: List<Widget>.generate(20, (int i) {
             return Container(
+              color: Colors.green,
               child: Text('$i'),
             );
           }),
@@ -150,9 +219,7 @@ void main() {
             return Builder(
               builder: (BuildContext context) {
                 log.add(i);
-                return Container(
-                  child: Text('$i'),
-                );
+                return Text('$i');
               },
             );
           }),
@@ -242,9 +309,7 @@ void main() {
         child: ListView(
           itemExtent: 100.0,
           children: List<Widget>.generate(2, (int i) {
-            return Container(
-              child: Text('$i'),
-            );
+            return Text('$i');
           }),
         ),
       ),
@@ -263,9 +328,7 @@ void main() {
         child: ListView(
           itemExtent: 100.0,
           children: List<Widget>.generate(5, (int i) {
-            return Container(
-              child: Text('$i'),
-            );
+            return Text('$i');
           }),
         ),
       ),
@@ -309,9 +372,7 @@ void main() {
             itemExtent: 100.0,
             shrinkWrap: true,
             children: List<Widget>.generate(20, (int i) {
-              return Container(
-                child: Text('$i'),
-              );
+              return Text('$i');
             }),
           ),
         ),
@@ -322,14 +383,71 @@ void main() {
     expect(find.text('19'), findsOneWidget);
   });
 
+  testWidgets('ListView with shrink wrap in bounded context correctly uses cache extent', (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox(
+          height: 400,
+          child: ListView(
+            itemExtent: 100.0,
+            shrinkWrap: true,
+            children: List<Widget>.generate(20, (int i) {
+              return Text('Text $i');
+            }),
+          ),
+        ),
+      ),
+    );
+    expect(tester.getSemantics(find.text('Text 5')), matchesSemantics());
+    expect(tester.getSemantics(find.text('Text 6', skipOffstage: false)), matchesSemantics(isHidden: true));
+    expect(tester.getSemantics(find.text('Text 7', skipOffstage: false)), matchesSemantics(isHidden: true));
+    expect(tester.getSemantics(find.text('Text 8', skipOffstage: false)), matchesSemantics(isHidden: true));
+    handle.dispose();
+  });
+
+  testWidgets('ListView hidden items should stay hidden if their semantics are updated', (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox(
+          height: 400,
+          child: ListView(
+            itemExtent: 100.0,
+            shrinkWrap: true,
+            children: List<Widget>.generate(20, (int i) {
+              return Text('Text $i');
+            }),
+          ),
+        ),
+      ),
+    );
+    // Scrollable maybe be marked dirty after layout.
+    await tester.pumpAndSettle();
+    expect(tester.getSemantics(find.text('Text 5')), matchesSemantics());
+    expect(tester.getSemantics(find.text('Text 6', skipOffstage: false)), matchesSemantics(isHidden: true));
+    expect(tester.getSemantics(find.text('Text 7', skipOffstage: false)), matchesSemantics(isHidden: true));
+    expect(tester.getSemantics(find.text('Text 8', skipOffstage: false)), matchesSemantics(isHidden: true));
+
+    // Marks Text 6 semantics as dirty.
+    final RenderObject text6 = tester.renderObject(find.text('Text 6', skipOffstage: false));
+    text6.markNeedsSemanticsUpdate();
+
+    // Verify the semantics is still hidden.
+    await tester.pump();
+    expect(tester.getSemantics(find.text('Text 6', skipOffstage: false)), matchesSemantics(isHidden: true));
+
+    handle.dispose();
+  });
+
   testWidgets('didFinishLayout has correct indices', (WidgetTester tester) async {
     final TestSliverChildListDelegate delegate = TestSliverChildListDelegate(
       List<Widget>.generate(
         20,
         (int i) {
-          return Container(
-            child: Text('$i', textDirection: TextDirection.ltr),
-          );
+          return Text('$i', textDirection: TextDirection.ltr);
         },
       ),
     );
@@ -371,7 +489,7 @@ void main() {
   });
 
   testWidgets('ListView automatically pad MediaQuery on axis', (WidgetTester tester) async {
-    EdgeInsets innerMediaQueryPadding;
+    EdgeInsets? innerMediaQueryPadding;
 
     await tester.pumpWidget(
       Directionality(
@@ -405,7 +523,7 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: Center(
-          child: Container(
+          child: SizedBox(
             height: 200.0,
             child: ListView(
               cacheExtent: 500.0,
@@ -434,12 +552,12 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: Center(
-          child: Container(
+          child: SizedBox(
             height: 200.0,
             child: ListView(
               cacheExtent: 500.0,
-              children: <Widget>[
-                Container(
+              children: const <Widget>[
+                SizedBox(
                   height: 100.0,
                 ),
               ],
@@ -459,19 +577,19 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: Center(
-          child: Container(
+          child: SizedBox(
             height: 200.0,
             child: ListView(
               itemExtent: 100.0,
               cacheExtent: 500.0,
-              children: <Widget>[
-                Container(
+              children: const <Widget>[
+                SizedBox(
                   height: 100.0,
                 ),
-                Container(
+                SizedBox(
                   height: 100.0,
                 ),
-                Container(
+                SizedBox(
                   height: 100.0,
                 ),
               ],
@@ -489,13 +607,13 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: Center(
-          child: Container(
+          child: SizedBox(
             height: 200.0,
             child: ListView(
               itemExtent: 100.0,
               cacheExtent: 500.0,
-              children: <Widget>[
-                Container(
+              children: const <Widget>[
+                SizedBox(
                   height: 100.0,
                 ),
               ],
@@ -514,13 +632,13 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: Center(
-          child: Container(
+          child: SizedBox(
             height: 200.0,
             child: ListView(
               scrollDirection: Axis.horizontal,
               itemExtent: 100.0,
-              children: <Widget>[
-                Container(
+              children: const <Widget>[
+                SizedBox(
                   height: 100.0,
                 ),
               ],
@@ -545,20 +663,20 @@ void main() {
     // Regression test for https://github.com/flutter/flutter/issues/43380.
     final ScrollController controller = ScrollController();
 
-    Widget buildListView({@required Axis scrollDirection}) {
+    Widget buildListView({ required Axis scrollDirection }) {
       assert(scrollDirection != null);
       return Directionality(
         textDirection: TextDirection.ltr,
         child: Center(
-          child: Container(
+          child: SizedBox(
             height: 200.0,
             width: 100.0,
             child: ListView(
               controller: controller,
               scrollDirection: scrollDirection,
               itemExtent: 50.0,
-              children: <Widget>[
-                Container(
+              children: const <Widget>[
+                SizedBox(
                   height: 50.0,
                   width: 50.0,
                 ),
@@ -603,8 +721,8 @@ void main() {
       Directionality(
         textDirection: TextDirection.ltr,
         child: ListView(
-          children: <Widget>[Container(height: 2000.0)],
           clipBehavior: Clip.antiAlias,
+          children: <Widget>[Container(height: 2000.0)],
         ),
       ),
     );

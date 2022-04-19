@@ -2,50 +2,33 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../rendering/mock_canvas.dart';
-import 'feedback_tester.dart';
-
-class MockClipboard {
-  Object _clipboardData = <String, dynamic>{
-    'text': null,
-  };
-
-  Future<dynamic> handleMethodCall(MethodCall methodCall) async {
-    switch (methodCall.method) {
-      case 'Clipboard.getData':
-        return _clipboardData;
-      case 'Clipboard.setData':
-        _clipboardData = methodCall.arguments;
-        break;
-    }
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final MockClipboard mockClipboard = MockClipboard();
 
-  DateTime firstDate;
-  DateTime lastDate;
-  DateTime initialDate;
-  DateTime today;
-  SelectableDayPredicate selectableDayPredicate;
-  DatePickerEntryMode initialEntryMode;
-  DatePickerMode initialCalendarMode;
+  late DateTime firstDate;
+  late DateTime lastDate;
+  late DateTime initialDate;
+  late DateTime today;
+  late SelectableDayPredicate? selectableDayPredicate;
+  late DatePickerEntryMode initialEntryMode;
+  late DatePickerMode initialCalendarMode;
 
-  String cancelText;
-  String confirmText;
-  String errorFormatText;
-  String errorInvalidText;
-  String fieldHintText;
-  String fieldLabelText;
-  String helpText;
+  String? cancelText;
+  String? confirmText;
+  String? errorFormatText;
+  String? errorInvalidText;
+  String? fieldHintText;
+  String? fieldLabelText;
+  String? helpText;
+  TextInputType? keyboardType;
 
   final Finder nextMonthIcon = find.byWidgetPredicate((Widget w) => w is IconButton && (w.tooltip?.startsWith('Next month') ?? false));
   final Finder previousMonthIcon = find.byWidgetPredicate((Widget w) => w is IconButton && (w.tooltip?.startsWith('Previous month') ?? false));
@@ -56,8 +39,8 @@ void main() {
     return tester.widget<TextField>(find.byType(TextField));
   }
 
-  setUp(() async {
-    firstDate = DateTime(2001, DateTime.january, 1);
+  setUp(() {
+    firstDate = DateTime(2001);
     lastDate = DateTime(2031, DateTime.december, 31);
     initialDate = DateTime(2016, DateTime.january, 15);
     today = DateTime(2016, DateTime.january, 3);
@@ -72,23 +55,15 @@ void main() {
     fieldHintText = null;
     fieldLabelText = null;
     helpText = null;
-
-    // Fill the clipboard so that the Paste option is available in the text
-    // selection menu.
-    SystemChannels.platform.setMockMethodCallHandler(mockClipboard.handleMethodCall);
-    await Clipboard.setData(const ClipboardData(text: 'Clipboard data'));
-  });
-
-  tearDown(() {
-    SystemChannels.platform.setMockMethodCallHandler(null);
+    keyboardType = null;
   });
 
   Future<void> prepareDatePicker(
     WidgetTester tester,
-    Future<void> callback(Future<DateTime> date),
-    { TextDirection textDirection = TextDirection.ltr }
-  ) async {
-    BuildContext buttonContext;
+    Future<void> Function(Future<DateTime?> date) callback, {
+    TextDirection textDirection = TextDirection.ltr,
+  }) async {
+    late BuildContext buttonContext;
     await tester.pumpWidget(MaterialApp(
       home: Material(
         child: Builder(
@@ -107,7 +82,7 @@ void main() {
     await tester.tap(find.text('Go'));
     expect(buttonContext, isNotNull);
 
-    final Future<DateTime> date = showDatePicker(
+    final Future<DateTime?> date = showDatePicker(
       context: buttonContext,
       initialDate: initialDate,
       firstDate: firstDate,
@@ -123,10 +98,11 @@ void main() {
       fieldHintText: fieldHintText,
       fieldLabelText: fieldLabelText,
       helpText: helpText,
-      builder: (BuildContext context, Widget child) {
+      keyboardType: keyboardType,
+      builder: (BuildContext context, Widget? child) {
         return Directionality(
           textDirection: textDirection,
-          child: child,
+          child: child ?? const SizedBox(),
         );
       },
     );
@@ -140,29 +116,29 @@ void main() {
       cancelText = 'nope';
       confirmText = 'yep';
       helpText = 'help';
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
-        expect(find.text(cancelText), findsOneWidget);
-        expect(find.text(confirmText), findsOneWidget);
-        expect(find.text(helpText), findsOneWidget);
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
+        expect(find.text(cancelText!), findsOneWidget);
+        expect(find.text(confirmText!), findsOneWidget);
+        expect(find.text(helpText!), findsOneWidget);
       });
     });
 
     testWidgets('Initial date is the default', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('OK'));
         expect(await date, DateTime(2016, DateTime.january, 15));
       });
     });
 
     testWidgets('Can cancel', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('CANCEL'));
         expect(await date, isNull);
       });
     });
 
-    testWidgets('Can toggle to input entry mode', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+    testWidgets('Can switch from calendar to input entry mode', (WidgetTester tester) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         expect(find.byType(TextField), findsNothing);
         await tester.tap(find.byIcon(Icons.edit));
         await tester.pumpAndSettle();
@@ -170,8 +146,34 @@ void main() {
       });
     });
 
-    testWidgets('Toggle to input mode keeps selected date', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+    testWidgets('Can switch from input to calendar entry mode', (WidgetTester tester) async {
+      initialEntryMode = DatePickerEntryMode.input;
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
+        expect(find.byType(TextField), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.calendar_today));
+        await tester.pumpAndSettle();
+        expect(find.byType(TextField), findsNothing);
+      });
+    });
+
+    testWidgets('Can not switch out of calendarOnly mode', (WidgetTester tester) async {
+      initialEntryMode = DatePickerEntryMode.calendarOnly;
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
+        expect(find.byType(TextField), findsNothing);
+        expect(find.byIcon(Icons.edit), findsNothing);
+      });
+    });
+
+    testWidgets('Can not switch out of inputOnly mode', (WidgetTester tester) async {
+      initialEntryMode = DatePickerEntryMode.inputOnly;
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.byIcon(Icons.calendar_today), findsNothing);
+      });
+    });
+
+    testWidgets('Switching to input mode keeps selected date', (WidgetTester tester) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('12'));
         await tester.tap(find.byIcon(Icons.edit));
         await tester.pumpAndSettle();
@@ -180,8 +182,19 @@ void main() {
       });
     });
 
+    testWidgets('Input only mode should validate date', (WidgetTester tester) async {
+      initialEntryMode = DatePickerEntryMode.inputOnly;
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
+        // Enter text input mode and type an invalid date to get error.
+        await tester.enterText(find.byType(TextField), '1234567');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+        expect(find.text('Invalid format.'), findsOneWidget);
+      });
+    });
+
     testWidgets('Switching to input mode resets input error state', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         // Enter text input mode and type an invalid date to get error.
         await tester.tap(find.byIcon(Icons.edit));
         await tester.pumpAndSettle();
@@ -190,7 +203,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Invalid format.'), findsOneWidget);
 
-        // Toggle to calender mode and then back to input mode
+        // Toggle to calendar mode and then back to input mode
         await tester.tap(find.byIcon(Icons.calendar_today));
         await tester.pumpAndSettle();
         await tester.tap(find.byIcon(Icons.edit));
@@ -219,10 +232,10 @@ void main() {
                         initialDate: DateTime.now(),
                         firstDate: DateTime(2018),
                         lastDate: DateTime(2030),
-                        builder: (BuildContext context, Widget child) {
+                        builder: (BuildContext context, Widget? child) {
                           return Directionality(
                             textDirection: textDirection,
-                            child: child,
+                            child: child ?? const SizedBox(),
                           );
                         },
                       );
@@ -273,7 +286,7 @@ void main() {
                       initialDate: DateTime.now(),
                       firstDate: DateTime(2018),
                       lastDate: DateTime(2030),
-                      builder: (BuildContext context, Widget child) => const SizedBox(),
+                      builder: (BuildContext context, Widget? child) => const SizedBox(),
                     );
                   },
                   child: const Text('Show Date Picker'),
@@ -295,7 +308,7 @@ void main() {
       // Test that the defaults work
       const DialogTheme datePickerDefaultDialogTheme = DialogTheme(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(4.0))
+          borderRadius: BorderRadius.all(Radius.circular(4.0)),
         ),
         elevation: 24,
       );
@@ -329,7 +342,7 @@ void main() {
       // Test that it honors ThemeData.dialogTheme settings
       const DialogTheme customDialogTheme = DialogTheme(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(40.0))
+          borderRadius: BorderRadius.all(Radius.circular(40.0)),
         ),
         elevation: 50,
       );
@@ -355,8 +368,8 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('X'));
-      await tester.pumpAndSettle();
+      await tester.pump(); // start theme animation
+      await tester.pump(const Duration(seconds: 5)); // end theme animation
       final Material themeDialogMaterial = tester.widget<Material>(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first);
       expect(themeDialogMaterial.shape, customDialogTheme.shape);
       expect(themeDialogMaterial.elevation, customDialogTheme.elevation);
@@ -375,12 +388,12 @@ void main() {
                        showDatePicker(
                          context: context,
                          initialDate: DateTime(2016, DateTime.january, 15),
-                         firstDate:DateTime(2001, DateTime.january, 1),
+                         firstDate:DateTime(2001),
                          lastDate: DateTime(2031, DateTime.december, 31),
-                         builder: (BuildContext context, Widget child) {
+                         builder: (BuildContext context, Widget? child) {
                            return Directionality(
                              textDirection: textDirection,
-                             child: child,
+                             child: child ?? const SizedBox(),
                            );
                          },
                        );
@@ -440,7 +453,7 @@ void main() {
 
   group('Calendar mode', () {
     testWidgets('Can select a day', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('12'));
         await tester.tap(find.text('OK'));
         expect(await date, equals(DateTime(2016, DateTime.january, 12)));
@@ -448,7 +461,7 @@ void main() {
     });
 
     testWidgets('Can select a month', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(previousMonthIcon);
         await tester.pumpAndSettle(const Duration(seconds: 1));
         await tester.tap(find.text('25'));
@@ -458,7 +471,7 @@ void main() {
     });
 
     testWidgets('Can select a year', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('January 2016')); // Switch to year mode.
         await tester.pump();
         await tester.tap(find.text('2018'));
@@ -469,7 +482,7 @@ void main() {
 
     testWidgets('Selecting date does not change displayed month', (WidgetTester tester) async {
       initialDate = DateTime(2020, DateTime.march, 15);
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(nextMonthIcon);
         await tester.pumpAndSettle(const Duration(seconds: 1));
         expect(find.text('April 2020'), findsOneWidget);
@@ -482,7 +495,7 @@ void main() {
     });
 
     testWidgets('Changing year does not change selected date', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('January 2016'));
         await tester.pump();
         await tester.tap(find.text('2018'));
@@ -493,7 +506,7 @@ void main() {
     });
 
     testWidgets('Changing year does not change the month', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(nextMonthIcon);
         await tester.pumpAndSettle();
         await tester.tap(nextMonthIcon);
@@ -507,7 +520,7 @@ void main() {
     });
 
     testWidgets('Can select a year and then a day', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('January 2016')); // Switch to year mode.
         await tester.pump();
         await tester.tap(find.text('2017'));
@@ -519,7 +532,7 @@ void main() {
     });
 
     testWidgets('Current year is visible in year picker', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('January 2016')); // Switch to year mode.
         await tester.pump();
         expect(find.text('2016'), findsOneWidget);
@@ -530,7 +543,7 @@ void main() {
       initialDate = DateTime(2017, DateTime.january, 15);
       firstDate = initialDate;
       lastDate = initialDate;
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         // Earlier than firstDate. Should be ignored.
         await tester.tap(find.text('10'));
         // Later than lastDate. Should be ignored.
@@ -545,7 +558,7 @@ void main() {
       initialDate = DateTime(2017, DateTime.january, 15);
       firstDate = initialDate;
       lastDate = DateTime(2017, DateTime.february, 20);
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(nextMonthIcon);
         await tester.pumpAndSettle(const Duration(seconds: 1));
         // Shouldn't be possible to keep going into March.
@@ -557,7 +570,7 @@ void main() {
       initialDate = DateTime(2017, DateTime.january, 15);
       firstDate = DateTime(2016, DateTime.december, 10);
       lastDate = initialDate;
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(previousMonthIcon);
         await tester.pumpAndSettle(const Duration(seconds: 1));
         // Shouldn't be possible to keep going into November.
@@ -569,7 +582,7 @@ void main() {
       initialDate = DateTime(2018, DateTime.july, 4);
       firstDate = DateTime(2018, DateTime.june, 9);
       lastDate = DateTime(2018, DateTime.december, 15);
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('July 2018')); // Switch to year mode.
         await tester.pumpAndSettle();
         await tester.tap(find.text('2016')); // Disabled, doesn't change the year.
@@ -584,7 +597,7 @@ void main() {
       initialDate = DateTime(2018, DateTime.may, 4);
       firstDate = DateTime(2016, DateTime.june, 9);
       lastDate = DateTime(2019, DateTime.january, 15);
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('May 2018'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('2016'));
@@ -598,7 +611,7 @@ void main() {
       initialDate = DateTime(2018, DateTime.may, 4);
       firstDate = DateTime(2016, DateTime.june, 9);
       lastDate = DateTime(2019, DateTime.january, 15);
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('May 2018'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('2019'));
@@ -613,7 +626,7 @@ void main() {
       firstDate = DateTime(2017, DateTime.january, 10);
       lastDate = DateTime(2017, DateTime.january, 20);
       selectableDayPredicate = (DateTime day) => day.day.isEven;
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('13')); // Odd, doesn't work.
         await tester.tap(find.text('10')); // Even, works.
         await tester.tap(find.text('17')); // Odd, doesn't work.
@@ -625,7 +638,7 @@ void main() {
     testWidgets('Can select initial calendar picker mode', (WidgetTester tester) async {
       initialDate = DateTime(2014, DateTime.january, 15);
       initialCalendarMode = DatePickerMode.year;
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.pump();
         // 2018 wouldn't be available if the year picker wasn't showing.
         // The initial current year is 2014.
@@ -637,28 +650,43 @@ void main() {
 
     testWidgets('currentDate is highlighted', (WidgetTester tester) async {
       today = DateTime(2016, 1, 2);
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.pump();
         const Color todayColor = Color(0xff2196f3); // default primary color
         expect(
           Material.of(tester.element(find.text('2'))),
           // The current day should be painted with a circle outline
-          paints..circle(color: todayColor, style: PaintingStyle.stroke, strokeWidth: 1.0)
+          paints..circle(color: todayColor, style: PaintingStyle.stroke, strokeWidth: 1.0),
         );
+      });
+    });
+
+    testWidgets('Selecting date does not switch picker to year selection', (WidgetTester tester) async {
+      initialDate = DateTime(2020, DateTime.may, 10);
+      initialCalendarMode = DatePickerMode.year;
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
+        await tester.pump();
+        await tester.tap(find.text('2017'));
+        await tester.pump();
+        expect(find.text('May 2017'), findsOneWidget);
+        await tester.tap(find.text('10'));
+        await tester.pump();
+        expect(find.text('May 2017'), findsOneWidget);
+        expect(find.text('2017'), findsNothing);
       });
     });
   });
 
   group('Input mode', () {
     setUp(() {
-      firstDate = DateTime(2015, DateTime.january, 1);
+      firstDate = DateTime(2015);
       lastDate = DateTime(2017, DateTime.december, 31);
       initialDate = DateTime(2016, DateTime.january, 15);
       initialEntryMode = DatePickerEntryMode.input;
     });
 
     testWidgets('Initial entry mode is used', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         expect(find.byType(TextField), findsOneWidget);
       });
     });
@@ -669,24 +697,32 @@ void main() {
       fieldHintText = 'hint';
       fieldLabelText = 'label';
       helpText = 'help';
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
-        expect(find.text(cancelText), findsOneWidget);
-        expect(find.text(confirmText), findsOneWidget);
-        expect(find.text(fieldHintText), findsOneWidget);
-        expect(find.text(fieldLabelText), findsOneWidget);
-        expect(find.text(helpText), findsOneWidget);
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
+        expect(find.text(cancelText!), findsOneWidget);
+        expect(find.text(confirmText!), findsOneWidget);
+        expect(find.text(fieldHintText!), findsOneWidget);
+        expect(find.text(fieldLabelText!), findsOneWidget);
+        expect(find.text(helpText!), findsOneWidget);
+      });
+    });
+
+    testWidgets('KeyboardType is used', (WidgetTester tester) async {
+      keyboardType = TextInputType.text;
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
+        final TextField field = textField(tester);
+        expect(field.keyboardType, TextInputType.text);
       });
     });
 
     testWidgets('Initial date is the default', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('OK'));
         expect(await date, DateTime(2016, DateTime.january, 15));
       });
     });
 
     testWidgets('Can toggle to calendar entry mode', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         expect(find.byType(TextField), findsOneWidget);
         await tester.tap(find.byIcon(Icons.calendar_today));
         await tester.pumpAndSettle();
@@ -695,9 +731,9 @@ void main() {
     });
 
     testWidgets('Toggle to calendar mode keeps selected date', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         final TextField field = textField(tester);
-        field.controller.clear();
+        field.controller!.clear();
 
         await tester.enterText(find.byType(TextField), '12/25/2016');
         await tester.tap(find.byIcon(Icons.calendar_today));
@@ -708,9 +744,9 @@ void main() {
     });
 
     testWidgets('Entered text returns date', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         final TextField field = textField(tester);
-        field.controller.clear();
+        field.controller!.clear();
 
         await tester.enterText(find.byType(TextField), '12/25/2016');
         await tester.tap(find.text('OK'));
@@ -720,230 +756,60 @@ void main() {
 
     testWidgets('Too short entered text shows error', (WidgetTester tester) async {
       errorFormatText = 'oops';
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         final TextField field = textField(tester);
-        field.controller.clear();
+        field.controller!.clear();
 
         await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextField), '1225');
-        expect(find.text(errorFormatText), findsNothing);
+        expect(find.text(errorFormatText!), findsNothing);
 
         await tester.tap(find.text('OK'));
         await tester.pumpAndSettle();
-        expect(find.text(errorFormatText), findsOneWidget);
+        expect(find.text(errorFormatText!), findsOneWidget);
       });
     });
 
     testWidgets('Bad format entered text shows error', (WidgetTester tester) async {
       errorFormatText = 'oops';
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         final TextField field = textField(tester);
-        field.controller.clear();
+        field.controller!.clear();
 
         await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextField), '20 days, 3 months, 2003');
         expect(find.text('20 days, 3 months, 2003'), findsOneWidget);
-        expect(find.text(errorFormatText), findsNothing);
+        expect(find.text(errorFormatText!), findsNothing);
 
         await tester.tap(find.text('OK'));
         await tester.pumpAndSettle();
-        expect(find.text(errorFormatText), findsOneWidget);
+        expect(find.text(errorFormatText!), findsOneWidget);
       });
     });
 
     testWidgets('Invalid entered text shows error', (WidgetTester tester) async {
       errorInvalidText = 'oops';
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         final TextField field = textField(tester);
-        field.controller.clear();
+        field.controller!.clear();
 
         await tester.pumpAndSettle();
         await tester.enterText(find.byType(TextField), '08/10/1969');
-        expect(find.text(errorInvalidText), findsNothing);
+        expect(find.text(errorInvalidText!), findsNothing);
 
         await tester.tap(find.text('OK'));
         await tester.pumpAndSettle();
-        expect(find.text(errorInvalidText), findsOneWidget);
-      });
-    });
-
-    testWidgets('InputDecorationTheme is honored', (WidgetTester tester) async {
-      BuildContext buttonContext;
-      const InputBorder border = InputBorder.none;
-      await tester.pumpWidget(MaterialApp(
-        theme: ThemeData.light().copyWith(
-          inputDecorationTheme: const InputDecorationTheme(
-            filled: false,
-            border: border,
-          ),
-        ),
-        home: Material(
-          child: Builder(
-            builder: (BuildContext context) {
-              return ElevatedButton(
-                onPressed: () {
-                  buttonContext = context;
-                },
-                child: const Text('Go'),
-              );
-            },
-          ),
-        ),
-      ));
-
-      await tester.tap(find.text('Go'));
-      expect(buttonContext, isNotNull);
-
-      showDatePicker(
-        context: buttonContext,
-        initialDate: initialDate,
-        firstDate: firstDate,
-        lastDate: lastDate,
-        currentDate: today,
-        initialEntryMode: DatePickerEntryMode.input,
-      );
-
-      await tester.pumpAndSettle();
-
-      // Get the border and container color from the painter of the _BorderContainer
-      // (this was cribbed from input_decorator_test.dart).
-      final CustomPaint customPaint = tester.widget(find.descendant(
-        of: find.byWidgetPredicate((Widget w) => '${w.runtimeType}' == '_BorderContainer'),
-        matching: find.byWidgetPredicate((Widget w) => w is CustomPaint),
-      ));
-      final dynamic/*_InputBorderPainter*/ inputBorderPainter = customPaint.foregroundPainter;
-      final dynamic/*_InputBorderTween*/ inputBorderTween = inputBorderPainter.border;
-      final Animation<double> animation = inputBorderPainter.borderAnimation as Animation<double>;
-      final InputBorder actualBorder = inputBorderTween.evaluate(animation) as InputBorder;
-      final Color containerColor = inputBorderPainter.blendedColor as Color;
-
-      // Border should match
-      expect(actualBorder, equals(border));
-
-      // It shouldn't be filled, so the color should be transparent
-      expect(containerColor, equals(Colors.transparent));
-    });
-  });
-
-  group('CalendarDatePicker', () {
-    // Tests for the standalone CalendarDatePicker class
-    testWidgets('Updates to initialDate parameter is reflected in the state', (WidgetTester tester) async {
-      final Key pickerKey = UniqueKey();
-      final DateTime initialDate = DateTime(2020, 1, 21);
-      final DateTime updatedDate = DateTime(1976, 2, 23);
-      const Color selectedColor = Color(0xff2196f3); // default primary color
-
-      await tester.pumpWidget(MaterialApp(
-        home: Material(
-          child: CalendarDatePicker(
-            key: pickerKey,
-            initialDate: initialDate,
-            firstDate: DateTime(1970, 1, 1),
-            lastDate: DateTime(2099, 31, 12),
-            onDateChanged: (DateTime value) {},
-          ),
-        ),
-      ));
-      await tester.pumpAndSettle();
-
-      // Month should show as January 2020
-      expect(find.text('January 2020'), findsOneWidget);
-      // Selected date should be painted with a colored circle
-      expect(
-        Material.of(tester.element(find.text('21'))),
-        paints..circle(color: selectedColor, style: PaintingStyle.fill)
-      );
-
-      // Change to the updated initialDate
-      await tester.pumpWidget(MaterialApp(
-        home: Material(
-          child: CalendarDatePicker(
-            key: pickerKey,
-            initialDate: updatedDate,
-            firstDate: DateTime(1970, 1, 1),
-            lastDate: DateTime(2099, 31, 12),
-            onDateChanged: (DateTime value) {},
-          ),
-        ),
-      ));
-      // Wait for the page scroll animation to finish
-      await tester.pumpAndSettle(const Duration(milliseconds: 200));
-
-      // Month should show as February 1976
-      expect(find.text('January 2020'), findsNothing);
-      expect(find.text('February 1976'), findsOneWidget);
-      // Selected date should be painted with a colored circle
-      expect(
-          Material.of(tester.element(find.text('23'))),
-          paints..circle(color: selectedColor, style: PaintingStyle.fill)
-      );
-
-    });
-  });
-
-  group('Haptic feedback', () {
-    const Duration hapticFeedbackInterval = Duration(milliseconds: 10);
-    FeedbackTester feedback;
-
-    setUp(() {
-      feedback = FeedbackTester();
-      initialDate = DateTime(2017, DateTime.january, 16);
-      firstDate = DateTime(2017, DateTime.january, 10);
-      lastDate = DateTime(2018, DateTime.january, 20);
-      initialCalendarMode = DatePickerMode.day;
-      selectableDayPredicate = (DateTime date) => date.day.isEven;
-    });
-
-    tearDown(() {
-      feedback?.dispose();
-    });
-
-    testWidgets('Selecting date vibrates', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
-        await tester.tap(find.text('10'));
-        await tester.pump(hapticFeedbackInterval);
-        expect(feedback.hapticCount, 1);
-        await tester.tap(find.text('12'));
-        await tester.pump(hapticFeedbackInterval);
-        expect(feedback.hapticCount, 2);
-        await tester.tap(find.text('14'));
-        await tester.pump(hapticFeedbackInterval);
-        expect(feedback.hapticCount, 3);
-      });
-    });
-
-    testWidgets('Tapping unselectable date does not vibrate', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
-        await tester.tap(find.text('11'));
-        await tester.pump(hapticFeedbackInterval);
-        expect(feedback.hapticCount, 0);
-        await tester.tap(find.text('13'));
-        await tester.pump(hapticFeedbackInterval);
-        expect(feedback.hapticCount, 0);
-        await tester.tap(find.text('15'));
-        await tester.pump(hapticFeedbackInterval);
-        expect(feedback.hapticCount, 0);
-      });
-    });
-
-    testWidgets('Changing modes and year vibrates', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
-        await tester.tap(find.text('January 2017'));
-        await tester.pump(hapticFeedbackInterval);
-        expect(feedback.hapticCount, 1);
-        await tester.tap(find.text('2018'));
-        await tester.pump(hapticFeedbackInterval);
-        expect(feedback.hapticCount, 2);
+        expect(find.text(errorInvalidText!), findsOneWidget);
       });
     });
   });
 
   group('Semantics', () {
-    testWidgets('calendar day mode', (WidgetTester tester) async {
+    testWidgets('calendar mode', (WidgetTester tester) async {
       final SemanticsHandle semantics = tester.ensureSemantics();
       addTearDown(semantics.dispose);
 
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         // Header
         expect(tester.getSemantics(find.text('SELECT DATE')), matchesSemantics(
           label: 'SELECT DATE\nFri, Jan 15',
@@ -959,239 +825,7 @@ void main() {
           isFocusable: true,
         ));
 
-        // Year mode drop down button
-        expect(tester.getSemantics(find.text('January 2016')), matchesSemantics(
-          label: 'Select year',
-          isButton: true,
-        ));
-
-        // Prev/Next month buttons
-        expect(tester.getSemantics(previousMonthIcon), matchesSemantics(
-          label: 'Previous month December 2015',
-          isButton: true,
-          hasTapAction: true,
-          isEnabled: true,
-          hasEnabledState: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(nextMonthIcon), matchesSemantics(
-          label: 'Next month February 2016',
-          isButton: true,
-          hasTapAction: true,
-          isEnabled: true,
-          hasEnabledState: true,
-          isFocusable: true,
-        ));
-
-        // Day grid
-        expect(tester.getSemantics(find.text('1')), matchesSemantics(
-          label: '1, Friday, January 1, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('2')), matchesSemantics(
-          label: '2, Saturday, January 2, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('3')), matchesSemantics(
-          label: '3, Sunday, January 3, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('4')), matchesSemantics(
-          label: '4, Monday, January 4, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('5')), matchesSemantics(
-          label: '5, Tuesday, January 5, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('6')), matchesSemantics(
-          label: '6, Wednesday, January 6, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('7')), matchesSemantics(
-          label: '7, Thursday, January 7, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('8')), matchesSemantics(
-          label: '8, Friday, January 8, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('9')), matchesSemantics(
-          label: '9, Saturday, January 9, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('10')), matchesSemantics(
-          label: '10, Sunday, January 10, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('11')), matchesSemantics(
-          label: '11, Monday, January 11, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('12')), matchesSemantics(
-          label: '12, Tuesday, January 12, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('13')), matchesSemantics(
-          label: '13, Wednesday, January 13, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('14')), matchesSemantics(
-          label: '14, Thursday, January 14, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('15')), matchesSemantics(
-          label: '15, Friday, January 15, 2016',
-          hasTapAction: true,
-          isSelected: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('16')), matchesSemantics(
-          label: '16, Saturday, January 16, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('17')), matchesSemantics(
-          label: '17, Sunday, January 17, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('18')), matchesSemantics(
-          label: '18, Monday, January 18, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('19')), matchesSemantics(
-          label: '19, Tuesday, January 19, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('20')), matchesSemantics(
-          label: '20, Wednesday, January 20, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('21')), matchesSemantics(
-          label: '21, Thursday, January 21, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('22')), matchesSemantics(
-          label: '22, Friday, January 22, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('23')), matchesSemantics(
-          label: '23, Saturday, January 23, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('24')), matchesSemantics(
-          label: '24, Sunday, January 24, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('25')), matchesSemantics(
-          label: '25, Monday, January 25, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('26')), matchesSemantics(
-          label: '26, Tuesday, January 26, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('27')), matchesSemantics(
-          label: '27, Wednesday, January 27, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('28')), matchesSemantics(
-          label: '28, Thursday, January 28, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('29')), matchesSemantics(
-          label: '29, Friday, January 29, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('30')), matchesSemantics(
-          label: '30, Saturday, January 30, 2016',
-          hasTapAction: true,
-          isFocusable: true,
-        ));
-
-        // Ok/Cancel buttons
-        expect(tester.getSemantics(find.text('OK')), matchesSemantics(
-          label: 'OK',
-          isButton: true,
-          hasTapAction: true,
-          isEnabled: true,
-          hasEnabledState: true,
-          isFocusable: true,
-        ));
-        expect(tester.getSemantics(find.text('CANCEL')), matchesSemantics(
-          label: 'CANCEL',
-          isButton: true,
-          hasTapAction: true,
-          isEnabled: true,
-          hasEnabledState: true,
-          isFocusable: true,
-        ));
-      });
-    });
-
-    testWidgets('calendar year mode', (WidgetTester tester) async {
-      final SemanticsHandle semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
-
-      initialCalendarMode = DatePickerMode.year;
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
-        // Header
-        expect(tester.getSemantics(find.text('SELECT DATE')), matchesSemantics(
-          label: 'SELECT DATE\nFri, Jan 15',
-        ));
-
-        // Input mode toggle button
-        expect(tester.getSemantics(switchToInputIcon), matchesSemantics(
-          label: 'Switch to input',
-          isButton: true,
-          hasTapAction: true,
-          isEnabled: true,
-          hasEnabledState: true,
-          isFocusable: true,
-        ));
-
-        // Year mode drop down button
-        expect(tester.getSemantics(find.text('January 2016')), matchesSemantics(
-          label: 'Select year',
-          isButton: true,
-        ));
-
-        // Year grid only shows 2010 - 2024
-        for (int year = 2010; year <= 2024; year++) {
-          expect(tester.getSemantics(find.text('$year')), matchesSemantics(
-            label: '$year',
-            hasTapAction: true,
-            isSelected: year == 2016,
-            isFocusable: true,
-          ));
-        }
+        // The semantics of the CalendarDatePicker are tested in its tests.
 
         // Ok/Cancel buttons
         expect(tester.getSemantics(find.text('OK')), matchesSemantics(
@@ -1218,7 +852,7 @@ void main() {
       addTearDown(semantics.dispose);
 
       initialEntryMode = DatePickerEntryMode.input;
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         // Header
         expect(tester.getSemantics(find.text('SELECT DATE')), matchesSemantics(
           label: 'SELECT DATE\nFri, Jan 15',
@@ -1234,20 +868,7 @@ void main() {
           isFocusable: true,
         ));
 
-        // Text field
-        expect(tester.getSemantics(find.byType(EditableText)), matchesSemantics(
-          label: 'Enter Date\nmm/dd/yyyy',
-          isTextField: true,
-          isFocused: true,
-          value: '01/15/2016',
-          hasTapAction: true,
-          hasSetSelectionAction: true,
-          hasCopyAction: true,
-          hasCutAction: true,
-          hasPasteAction: true,
-          hasMoveCursorBackwardByCharacterAction: true,
-          hasMoveCursorBackwardByWordAction: true,
-        ));
+        // The semantics of the InputDatePickerFormField are tested in its tests.
 
         // Ok/Cancel buttons
         expect(tester.getSemantics(find.text('OK')), matchesSemantics(
@@ -1272,7 +893,7 @@ void main() {
 
   group('Keyboard navigation', () {
     testWidgets('Can toggle to calendar entry mode', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         expect(find.byType(TextField), findsNothing);
         // Navigate to the entry toggle button and activate it
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -1288,7 +909,7 @@ void main() {
     });
 
     testWidgets('Can toggle to year mode', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         expect(find.text('2016'), findsNothing);
         // Navigate to the year selector and activate it
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -1300,7 +921,7 @@ void main() {
     });
 
     testWidgets('Can navigate next/previous months', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         expect(find.text('January 2016'), findsOneWidget);
         // Navigate to the previous month button and activate it twice
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -1328,7 +949,7 @@ void main() {
     });
 
     testWidgets('Can navigate date grid with arrow keys', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         // Navigate to the grid
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -1364,7 +985,7 @@ void main() {
     });
 
     testWidgets('Navigating with arrow keys scrolls months', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         // Navigate to the grid
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -1412,7 +1033,7 @@ void main() {
     });
 
     testWidgets('RTL text direction reverses the horizontal arrow key navigation', (WidgetTester tester) async {
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         // Navigate to the grid
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -1445,8 +1066,7 @@ void main() {
 
         // Should have selected Jan 18
         expect(await date, DateTime(2016, DateTime.january, 19));
-      },
-      textDirection: TextDirection.rtl);
+      }, textDirection: TextDirection.rtl);
     });
   });
 
@@ -1471,7 +1091,7 @@ void main() {
       addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
       tester.binding.window.devicePixelRatioTestValue = 1.0;
       addTearDown(tester.binding.window.clearDevicePixelRatioTestValue);
-      await prepareDatePicker(tester, (Future<DateTime> date) async {
+      await prepareDatePicker(tester, (Future<DateTime?> date) async {
         await tester.tap(find.text('OK'));
       });
       await tester.pumpAndSettle();
@@ -1517,14 +1137,316 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  group('showDatePicker avoids overlapping display features', () {
+    testWidgets('positioning with anchorPoint', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (BuildContext context, Widget? child) {
+            return MediaQuery(
+              // Display has a vertical hinge down the middle
+              data: const MediaQueryData(
+                size: Size(800, 600),
+                displayFeatures: <DisplayFeature>[
+                  DisplayFeature(
+                    bounds: Rect.fromLTRB(390, 0, 410, 600),
+                    type: DisplayFeatureType.hinge,
+                    state: DisplayFeatureState.unknown,
+                  ),
+                ],
+              ),
+              child: child!,
+            );
+          },
+          home: const Center(child: Text('Test')),
+        ),
+      );
+
+      final BuildContext context = tester.element(find.text('Test'));
+      showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(2018),
+        lastDate: DateTime(2030),
+        anchorPoint: const Offset(1000, 0),
+      );
+      await tester.pumpAndSettle();
+
+      // Should take the right side of the screen
+      expect(tester.getTopLeft(find.byType(DatePickerDialog)), const Offset(410.0, 0.0));
+      expect(tester.getBottomRight(find.byType(DatePickerDialog)), const Offset(800.0, 600.0));
+    });
+
+    testWidgets('positioning with Directionality', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (BuildContext context, Widget? child) {
+            return MediaQuery(
+              // Display has a vertical hinge down the middle
+              data: const MediaQueryData(
+                size: Size(800, 600),
+                displayFeatures: <DisplayFeature>[
+                  DisplayFeature(
+                    bounds: Rect.fromLTRB(390, 0, 410, 600),
+                    type: DisplayFeatureType.hinge,
+                    state: DisplayFeatureState.unknown,
+                  ),
+                ],
+              ),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: child!,
+              ),
+            );
+          },
+          home: const Center(child: Text('Test')),
+        ),
+      );
+
+      final BuildContext context = tester.element(find.text('Test'));
+      showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(2018),
+        lastDate: DateTime(2030),
+      );
+      await tester.pumpAndSettle();
+
+      // By default it should place the dialog on the right screen
+      expect(tester.getTopLeft(find.byType(DatePickerDialog)), const Offset(410.0, 0.0));
+      expect(tester.getBottomRight(find.byType(DatePickerDialog)), const Offset(800.0, 600.0));
+    });
+
+    testWidgets('positioning with defaults', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (BuildContext context, Widget? child) {
+            return MediaQuery(
+              // Display has a vertical hinge down the middle
+              data: const MediaQueryData(
+                size: Size(800, 600),
+                displayFeatures: <DisplayFeature>[
+                  DisplayFeature(
+                    bounds: Rect.fromLTRB(390, 0, 410, 600),
+                    type: DisplayFeatureType.hinge,
+                    state: DisplayFeatureState.unknown,
+                  ),
+                ],
+              ),
+              child: child!,
+            );
+          },
+          home: const Center(child: Text('Test')),
+        ),
+      );
+
+      final BuildContext context = tester.element(find.text('Test'));
+      showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(2018),
+        lastDate: DateTime(2030),
+      );
+      await tester.pumpAndSettle();
+
+      // By default it should place the dialog on the left screen
+      expect(tester.getTopLeft(find.byType(DatePickerDialog)), Offset.zero);
+      expect(tester.getBottomRight(find.byType(DatePickerDialog)), const Offset(390.0, 600.0));
+    });
+  });
+
+  testWidgets('DatePickerDialog is state restorable', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        restorationScopeId: 'app',
+        home: _RestorableDatePickerDialogTestWidget(),
+      ),
+    );
+
+    // The date picker should be closed.
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('25/7/2021'), findsOneWidget);
+
+    // Open the date picker.
+    await tester.tap(find.text('X'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    final TestRestorationData restorationData = await tester.getRestorationData();
+    await tester.restartAndRestore();
+
+    // The date picker should be open after restoring.
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    // Tap on the barrier.
+    await tester.tapAt(const Offset(10.0, 10.0));
+    await tester.pumpAndSettle();
+
+    // The date picker should be closed, the text value updated to the
+    // newly selected date.
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('25/7/2021'), findsOneWidget);
+
+    // The date picker should be open after restoring.
+    await tester.restoreFrom(restorationData);
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    // Select a different date.
+    await tester.tap(find.text('30'));
+    await tester.pumpAndSettle();
+
+    // Restart after the new selection. It should remain selected.
+    await tester.restartAndRestore();
+
+    // Close the date picker.
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    // The date picker should be closed, the text value updated to the
+    // newly selected date.
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('30/7/2021'), findsOneWidget);
+  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/33615
+
+  testWidgets('DatePickerDialog state restoration - DatePickerEntryMode', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        restorationScopeId: 'app',
+        home: _RestorableDatePickerDialogTestWidget(
+          datePickerEntryMode: DatePickerEntryMode.calendarOnly,
+        ),
+      ),
+    );
+
+    // The date picker should be closed.
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('25/7/2021'), findsOneWidget);
+
+    // Open the date picker.
+    await tester.tap(find.text('X'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    // Only in calendar mode and cannot switch out.
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byIcon(Icons.edit), findsNothing);
+
+    final TestRestorationData restorationData = await tester.getRestorationData();
+    await tester.restartAndRestore();
+
+    // The date picker should be open after restoring.
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    // Only in calendar mode and cannot switch out.
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byIcon(Icons.edit), findsNothing);
+
+    // Tap on the barrier.
+    await tester.tapAt(const Offset(10.0, 10.0));
+    await tester.pumpAndSettle();
+
+    // The date picker should be closed, the text value should be the same
+    // as before.
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('25/7/2021'), findsOneWidget);
+
+    // The date picker should be open after restoring.
+    await tester.restoreFrom(restorationData);
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    // Only in calendar mode and cannot switch out.
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byIcon(Icons.edit), findsNothing);
+  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/33615
+}
+
+class _RestorableDatePickerDialogTestWidget extends StatefulWidget {
+  const _RestorableDatePickerDialogTestWidget({
+    this.datePickerEntryMode = DatePickerEntryMode.calendar,
+  });
+
+  final DatePickerEntryMode datePickerEntryMode;
+
+  @override
+  _RestorableDatePickerDialogTestWidgetState createState() => _RestorableDatePickerDialogTestWidgetState();
+}
+
+class _RestorableDatePickerDialogTestWidgetState extends State<_RestorableDatePickerDialogTestWidget> with RestorationMixin {
+  @override
+  String? get restorationId => 'scaffold_state';
+
+  final RestorableDateTime _selectedDate = RestorableDateTime(DateTime(2021, 7, 25));
+  late final RestorableRouteFuture<DateTime?> _restorableDatePickerRouteFuture = RestorableRouteFuture<DateTime?>(
+    onComplete: _selectDate,
+    onPresent: (NavigatorState navigator, Object? arguments) {
+      return navigator.restorablePush(
+        _datePickerRoute,
+        arguments: <String, dynamic>{
+          'selectedDate': _selectedDate.value.millisecondsSinceEpoch,
+          'datePickerEntryMode': widget.datePickerEntryMode.index,
+        },
+      );
+    },
+  );
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_selectedDate, 'selected_date');
+    registerForRestoration(_restorableDatePickerRouteFuture, 'date_picker_route_future');
+  }
+
+  void _selectDate(DateTime? newSelectedDate) {
+    if (newSelectedDate != null) {
+      setState(() { _selectedDate.value = newSelectedDate; });
+    }
+  }
+
+  static Route<DateTime> _datePickerRoute(
+    BuildContext context,
+    Object? arguments,
+  ) {
+    return DialogRoute<DateTime>(
+      context: context,
+      builder: (BuildContext context) {
+        final Map<dynamic, dynamic> args = arguments! as Map<dynamic, dynamic>;
+        return DatePickerDialog(
+          restorationId: 'date_picker_dialog',
+          initialEntryMode: DatePickerEntryMode.values[args['datePickerEntryMode'] as int],
+          initialDate: DateTime.fromMillisecondsSinceEpoch(args['selectedDate'] as int),
+          firstDate: DateTime(2021),
+          lastDate: DateTime(2022),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final DateTime selectedDateTime = _selectedDate.value;
+    // Example: "25/7/1994"
+    final String selectedDateTimeString = '${selectedDateTime.day}/${selectedDateTime.month}/${selectedDateTime.year}';
+    return Scaffold(
+      body: Center(
+        child: Column(
+          children: <Widget>[
+            OutlinedButton(
+              onPressed: () {
+                _restorableDatePickerRouteFuture.present();
+              },
+              child: const Text('X'),
+            ),
+            Text(selectedDateTimeString),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _DatePickerObserver extends NavigatorObserver {
   int datePickerCount = 0;
 
   @override
-  void didPush(Route<dynamic> route, Route<dynamic> previousRoute) {
-    if (route.toString().contains('_DialogRoute')) {
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is DialogRoute) {
       datePickerCount++;
     }
     super.didPush(route, previousRoute);

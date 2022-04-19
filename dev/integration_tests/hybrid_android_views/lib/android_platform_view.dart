@@ -15,23 +15,24 @@ class AndroidPlatformView extends StatelessWidget {
   /// native view.
   /// `viewType` identifies the type of Android view to create.
   const AndroidPlatformView({
-    Key key,
+    super.key,
     this.onPlatformViewCreated,
-    @required this.viewType,
-  })  : assert(viewType != null),
-        super(key: key);
+    this.useHybridComposition = false,
+    required this.viewType,
+  })  : assert(viewType != null);
 
   /// The unique identifier for the view type to be embedded by this widget.
   ///
   /// A PlatformViewFactory for this type must have been registered.
   final String viewType;
 
-  /// {@template flutter.widgets.platformViews.createdParam}
   /// Callback to invoke after the platform view has been created.
   ///
   /// May be null.
-  /// {@endtemplate}
-  final PlatformViewCreatedCallback onPlatformViewCreated;
+  final PlatformViewCreatedCallback? onPlatformViewCreated;
+
+  // Use hybrid composition.
+  final bool useHybridComposition;
 
   @override
   Widget build(BuildContext context) {
@@ -46,17 +47,27 @@ class AndroidPlatformView extends StatelessWidget {
         );
       },
       onCreatePlatformView: (PlatformViewCreationParams params) {
-        final AndroidViewController controller =
-          PlatformViewsService.initSurfaceAndroidView(
+        print('useHybridComposition=$useHybridComposition');
+        late AndroidViewController controller;
+        if (useHybridComposition) {
+          controller = PlatformViewsService.initExpensiveAndroidView(
             id: params.id,
             viewType: params.viewType,
             layoutDirection: TextDirection.ltr,
-          )
-          ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated);
-        if (onPlatformViewCreated != null) {
-          controller.addOnPlatformViewCreatedListener(onPlatformViewCreated);
+          );
+        } else {
+          controller = PlatformViewsService.initSurfaceAndroidView(
+            id: params.id,
+            viewType: params.viewType,
+            layoutDirection: TextDirection.ltr,
+          );
         }
-        return controller..create();
+        if (onPlatformViewCreated != null) {
+          controller.addOnPlatformViewCreatedListener(onPlatformViewCreated!);
+        }
+        return controller
+          ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
+          ..create();
       },
     );
   }

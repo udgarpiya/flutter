@@ -29,8 +29,10 @@ void beginFrame(Duration timeStamp) {
   final double t = timeStamp.inMicroseconds / Duration.microsecondsPerMillisecond / 1800.0;
   canvas.rotate(math.pi * (t % 1.0));
 
-  canvas.drawRect(const ui.Rect.fromLTRB(-100.0, -100.0, 100.0, 100.0),
-                  ui.Paint()..color = const ui.Color.fromARGB(255, 0, 255, 0));
+  canvas.drawRect(
+    const ui.Rect.fromLTRB(-100.0, -100.0, 100.0, 100.0),
+    ui.Paint()..color = const ui.Color.fromARGB(255, 0, 255, 0),
+  );
   final ui.Picture picture = recorder.endRecording();
 
   // COMPOSITE
@@ -50,10 +52,11 @@ void beginFrame(Duration timeStamp) {
   // After rendering the current frame of the animation, we ask the engine to
   // schedule another frame. The engine will call beginFrame again when its time
   // to produce the next frame.
-  ui.window.scheduleFrame();
+  ui.PlatformDispatcher.instance.scheduleFrame();
 }
 
 void main() {
-  ui.window.onBeginFrame = beginFrame;
-  ui.window.scheduleFrame();
+  ui.PlatformDispatcher.instance
+    ..onBeginFrame = beginFrame
+    ..scheduleFrame();
 }

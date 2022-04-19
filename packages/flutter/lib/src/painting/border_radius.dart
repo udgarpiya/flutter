@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'package:flutter/foundation.dart';
 
 import 'basic_types.dart';
 
 /// Base class for [BorderRadius] that allows for text-direction aware resolution.
 ///
-/// A property or argument of this type accepts classes created either with [new
-/// BorderRadius.only] and its variants, or [new BorderRadiusDirectional.only]
+/// A property or argument of this type accepts classes created either with [
+/// BorderRadius.only] and its variants, or [BorderRadiusDirectional.only]
 /// and its variants.
 ///
 /// To convert a [BorderRadiusGeometry] object of indeterminate type into a
@@ -257,18 +256,16 @@ abstract class BorderRadiusGeometry {
   }
 
   @override
-  int get hashCode {
-    return hashValues(
-      _topLeft,
-      _topRight,
-      _bottomLeft,
-      _bottomRight,
-      _topStart,
-      _topEnd,
-      _bottomStart,
-      _bottomEnd,
-    );
-  }
+  int get hashCode => Object.hash(
+    _topLeft,
+    _topRight,
+    _bottomLeft,
+    _bottomRight,
+    _topStart,
+    _topEnd,
+    _bottomStart,
+    _bottomEnd,
+  );
 }
 
 /// An immutable set of radii for each corner of a rectangle.
@@ -326,6 +323,22 @@ class BorderRadius extends BorderRadiusGeometry {
     this.bottomLeft = Radius.zero,
     this.bottomRight = Radius.zero,
   });
+
+  /// Returns a copy of this BorderRadius with the given fields replaced with
+  /// the new values.
+  BorderRadius copyWith({
+    Radius? topLeft,
+    Radius? topRight,
+    Radius? bottomLeft,
+    Radius? bottomRight,
+  }) {
+    return BorderRadius.only(
+      topLeft: topLeft ?? this.topLeft,
+      topRight: topRight ?? this.topRight,
+      bottomLeft: bottomLeft ?? this.bottomLeft,
+      bottomRight: bottomRight ?? this.bottomRight,
+    );
+  }
 
   /// A border radius with all zero radii.
   static const BorderRadius zero = BorderRadius.all(Radius.zero);

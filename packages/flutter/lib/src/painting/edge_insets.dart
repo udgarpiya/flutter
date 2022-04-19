@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'dart:ui' as ui show lerpDouble, WindowPadding;
 
 import 'package:flutter/foundation.dart';
@@ -12,8 +11,8 @@ import 'basic_types.dart';
 /// Base class for [EdgeInsets] that allows for text-direction aware
 /// resolution.
 ///
-/// A property or argument of this type accepts classes created either with [new
-/// EdgeInsets.fromLTRB] and its variants, or [new
+/// A property or argument of this type accepts classes created either with [
+/// EdgeInsets.fromLTRB] and its variants, or [
 /// EdgeInsetsDirectional.fromSTEB] and its variants.
 ///
 /// To convert an [EdgeInsetsGeometry] object of indeterminate type into a
@@ -158,7 +157,7 @@ abstract class EdgeInsetsGeometry {
     );
   }
 
-  /// Returns the a new [EdgeInsetsGeometry] object with all values greater than
+  /// Returns a new [EdgeInsetsGeometry] object with all values greater than
   /// or equal to `min`, and less than or equal to `max`.
   EdgeInsetsGeometry clamp(EdgeInsetsGeometry min, EdgeInsetsGeometry max) {
     return _MixedEdgeInsets.fromLRSETB(
@@ -290,7 +289,7 @@ abstract class EdgeInsetsGeometry {
   }
 
   @override
-  int get hashCode => hashValues(_left, _right, _start, _end, _top, _bottom);
+  int get hashCode => Object.hash(_left, _right, _start, _end, _top, _bottom);
 }
 
 /// An immutable set of offsets in each of the four cardinal directions.
@@ -662,6 +661,22 @@ class EdgeInsetsDirectional extends EdgeInsetsGeometry {
     this.end = 0.0,
     this.bottom = 0.0,
   });
+
+  /// Creates insets where all the offsets are `value`.
+  ///
+  /// {@tool snippet}
+  ///
+  /// Typical eight-pixel margin on all sides:
+  ///
+  /// ```dart
+  /// const EdgeInsetsDirectional.all(8.0)
+  /// ```
+  /// {@end-tool}
+  const EdgeInsetsDirectional.all(double value)
+    : start = value,
+      top = value,
+      end = value,
+      bottom = value;
 
   /// An [EdgeInsetsDirectional] with zero offsets in each direction.
   ///

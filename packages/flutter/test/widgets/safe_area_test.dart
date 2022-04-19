@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('SafeArea', () {
@@ -79,7 +76,6 @@ void main() {
           data: MediaQueryData(padding: EdgeInsets.only(
             left: 100.0,
             top: 30.0,
-            right: 0.0,
             bottom: 40.0,
           )),
           child: child,
@@ -91,10 +87,9 @@ void main() {
 
     testWidgets('SafeArea - properties', (WidgetTester tester) async {
       final SafeArea child = SafeArea(
-        left: true,
         right: false,
         bottom: false,
-        child: Container()
+        child: Container(),
       );
       final DiagnosticPropertiesBuilder properties = DiagnosticPropertiesBuilder();
       child.debugFillProperties(properties);
@@ -152,6 +147,39 @@ void main() {
         expect(initialPoint, finalPoint);
       });
 
+      testWidgets('SafeArea alone - partial ViewInsets consume Padding', (WidgetTester tester) async {
+        final Widget child = boilerplate(SafeArea(
+          maintainBottomViewPadding: true,
+          child: Column(
+            children: const <Widget>[
+              Expanded(child: Placeholder()),
+            ],
+          ),
+        ));
+
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              viewPadding: EdgeInsets.only(bottom: 20.0),
+            ),
+            child: child,
+          ),
+        );
+        final Offset initialPoint = tester.getCenter(find.byType(Placeholder));
+        // Consume bottom padding - as if by the keyboard opening
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              viewPadding: EdgeInsets.only(bottom: 20.0),
+              viewInsets: EdgeInsets.only(bottom: 10.0),
+            ),
+            child: child,
+          ),
+        );
+        final Offset finalPoint = tester.getCenter(find.byType(Placeholder));
+        expect(initialPoint, finalPoint);
+      });
+
       testWidgets('SafeArea with nested Scaffold', (WidgetTester tester) async {
         final Widget child = boilerplate(SafeArea(
           maintainBottomViewPadding: true,
@@ -189,6 +217,42 @@ void main() {
         final Offset finalPoint = tester.getCenter(find.byType(Placeholder));
         expect(initialPoint, finalPoint);
       });
+
+      testWidgets('SafeArea with nested Scaffold  - partial ViewInsets consume Padding', (WidgetTester tester) async {
+        final Widget child = boilerplate(SafeArea(
+          maintainBottomViewPadding: true,
+          child: Scaffold(
+            resizeToAvoidBottomInset: false,
+            body: Column(
+              children: const <Widget>[
+                Expanded(child: Placeholder()),
+              ],
+            ),
+          ),
+        ));
+
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              viewPadding: EdgeInsets.only(bottom: 20.0),
+            ),
+            child: child,
+          ),
+        );
+        final Offset initialPoint = tester.getCenter(find.byType(Placeholder));
+        // Consume bottom padding - as if by the keyboard opening
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              viewPadding: EdgeInsets.only(bottom: 20.0),
+              viewInsets: EdgeInsets.only(bottom: 10.0),
+            ),
+            child: child,
+          ),
+        );
+        final Offset finalPoint = tester.getCenter(find.byType(Placeholder));
+        expect(initialPoint, finalPoint);
+      });
     });
   });
 
@@ -200,7 +264,6 @@ void main() {
           textDirection: TextDirection.ltr,
           child: Viewport(
             offset: ViewportOffset.fixed(0.0),
-            axisDirection: AxisDirection.down,
             slivers: <Widget>[
               const SliverToBoxAdapter(child: SizedBox(width: 800.0, height: 100.0, child: Text('before'))),
               sliver,
@@ -217,7 +280,7 @@ void main() {
           final Offset topLeft = target.localToGlobal(Offset.zero);
           final Offset bottomRight = target.localToGlobal(target.size.bottomRight(Offset.zero));
           return Rect.fromPoints(topLeft, bottomRight);
-        }
+        },
       ).toList();
       expect(testAnswers, equals(expectedRects));
     }
@@ -303,7 +366,6 @@ void main() {
           const EdgeInsets.only(
             left: 100.0,
             top: 30.0,
-            right: 0.0,
             bottom: 40.0,
           ),
           sliver,
@@ -319,7 +381,6 @@ void main() {
 
   testWidgets('SliverSafeArea - properties', (WidgetTester tester) async {
     const SliverSafeArea child = SliverSafeArea(
-      left: true,
       right: false,
       bottom: false,
       sliver: SliverToBoxAdapter(child: SizedBox(width: 800.0, height: 100.0, child: Text('padded'))),

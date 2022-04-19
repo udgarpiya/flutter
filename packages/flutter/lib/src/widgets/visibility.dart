@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/foundation.dart';
 
 import 'basic.dart';
@@ -55,8 +53,8 @@ class Visibility extends StatelessWidget {
   /// The [maintainAnimation] argument can only be set if [maintainState] is
   /// set.
   const Visibility({
-    Key key,
-    @required this.child,
+    super.key,
+    required this.child,
     this.replacement = const SizedBox.shrink(),
     this.visible = true,
     this.maintainState = false,
@@ -72,7 +70,7 @@ class Visibility extends StatelessWidget {
        assert(maintainSize != null),
        assert(
          maintainState == true || maintainAnimation == false,
-         'Cannot maintain animations if the state is not also maintained.'
+         'Cannot maintain animations if the state is not also maintained.',
        ),
        assert(
          maintainAnimation == true || maintainSize == false,
@@ -85,12 +83,11 @@ class Visibility extends StatelessWidget {
        assert(
          maintainSize == true || maintainInteractivity == false,
          'Cannot maintain interactivity if size is not maintained.',
-       ),
-       super(key: key);
+       );
 
   /// The widget to show or hide, as controlled by [visible].
   ///
-  /// {@macro flutter.widgets.child}
+  /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
 
   /// The widget to use when the child is not [visible], assuming that none of
@@ -220,9 +217,9 @@ class Visibility extends StatelessWidget {
       Widget result = child;
       if (!maintainInteractivity) {
         result = IgnorePointer(
-          child: child,
           ignoring: !visible,
           ignoringSemantics: !visible && !maintainSemantics,
+          child: child,
         );
       }
       return Opacity(
@@ -237,10 +234,10 @@ class Visibility extends StatelessWidget {
     if (maintainState) {
       Widget result = child;
       if (!maintainAnimation)
-        result = TickerMode(child: child, enabled: visible);
+        result = TickerMode(enabled: visible, child: child);
       return Offstage(
-        child: result,
         offstage: !visible,
+        child: result,
       );
     }
     assert(!maintainAnimation);
@@ -300,8 +297,8 @@ class SliverVisibility extends StatelessWidget {
   /// The [maintainAnimation] argument can only be set if [maintainState] is
   /// set.
   const SliverVisibility({
-    Key key,
-    @required this.sliver,
+    super.key,
+    required this.sliver,
     this.replacementSliver = const SliverToBoxAdapter(),
     this.visible = true,
     this.maintainState = false,
@@ -332,8 +329,7 @@ class SliverVisibility extends StatelessWidget {
        assert(
          maintainSize == true || maintainInteractivity == false,
          'Cannot maintain interactivity if size is not maintained.',
-       ),
-       super(key: key);
+       );
 
   /// The sliver to show or hide, as controlled by [visible].
   final Widget sliver;
@@ -475,7 +471,7 @@ class SliverVisibility extends StatelessWidget {
     if (maintainState) {
       Widget result = sliver;
       if (!maintainAnimation)
-        result = TickerMode(child: sliver, enabled: visible);
+        result = TickerMode(enabled: visible, child: sliver);
       return SliverOffstage(
         sliver: result,
         offstage: !visible,

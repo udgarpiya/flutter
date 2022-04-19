@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
+import 'dart:ui' show Brightness, DisplayFeature, DisplayFeatureState, DisplayFeatureType, GestureSettings, ViewConfiguration;
 
-import 'dart:ui' show Brightness;
-import 'package:flutter/foundation.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('MediaQuery does not have a default', (WidgetTester tester) async {
@@ -26,31 +25,54 @@ void main() {
     expect(exception, isNotNull);
     expect(exception ,isFlutterError);
     final FlutterError error = exception as FlutterError;
-    expect(error.diagnostics.length, 3);
-    expect(error.diagnostics.last, isA<DiagnosticsProperty<Element>>());
+    expect(error.diagnostics.length, 5);
+    expect(error.diagnostics.last, isA<ErrorHint>());
     expect(
       error.toStringDeep(),
       equalsIgnoringHashCodes(
         'FlutterError\n'
-        '   MediaQuery.of() called with a context that does not contain a\n'
-        '   MediaQuery.\n'
+        '   No MediaQuery widget ancestor found.\n'
+        '   Builder widgets require a MediaQuery widget ancestor.\n'
+        '   The specific widget that could not find a MediaQuery ancestor\n'
+        '   was:\n'
+        '     Builder\n'
+        '   The ownership chain for the affected widget is: "Builder ←\n'
+        '     [root]"\n'
         '   No MediaQuery ancestor could be found starting from the context\n'
         '   that was passed to MediaQuery.of(). This can happen because you\n'
-        '   do not have a WidgetsApp or MaterialApp widget (those widgets\n'
-        '   introduce a MediaQuery), or it can happen if the context you use\n'
-        '   comes from a widget above those widgets.\n'
-        '   The context used was:\n'
-        '     Builder\n',
+        '   have not added a WidgetsApp, CupertinoApp, or MaterialApp widget\n'
+        '   (those widgets introduce a MediaQuery), or it can happen if the\n'
+        '   context you use comes from a widget above those widgets.\n',
       ),
     );
   });
 
-  testWidgets('MediaQuery defaults to null', (WidgetTester tester) async {
+  testWidgets('MediaQuery.of finds a MediaQueryData when there is one', (WidgetTester tester) async {
+    bool tested = false;
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(),
+        child: Builder(
+          builder: (BuildContext context) {
+            final MediaQueryData data = MediaQuery.of(context);
+            expect(data, isNotNull);
+            tested = true;
+            return Container();
+          },
+        ),
+      ),
+    );
+    final dynamic exception = tester.takeException();
+    expect(exception, isNull);
+    expect(tested, isTrue);
+  });
+
+  testWidgets('MediaQuery.maybeOf defaults to null', (WidgetTester tester) async {
     bool tested = false;
     await tester.pumpWidget(
       Builder(
         builder: (BuildContext context) {
-          final MediaQueryData data = MediaQuery.of(context, nullOk: true);
+          final MediaQueryData? data = MediaQuery.maybeOf(context);
           expect(data, isNull);
           tested = true;
           return Container();
@@ -60,7 +82,25 @@ void main() {
     expect(tested, isTrue);
   });
 
-  testWidgets('MediaQueryData is sane', (WidgetTester tester) async {
+  testWidgets('MediaQuery.maybeOf finds a MediaQueryData when there is one', (WidgetTester tester) async {
+    bool tested = false;
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(),
+        child: Builder(
+          builder: (BuildContext context) {
+            final MediaQueryData? data = MediaQuery.maybeOf(context);
+            expect(data, isNotNull);
+            tested = true;
+            return Container();
+          },
+        ),
+      ),
+    );
+    expect(tested, isTrue);
+  });
+
+  testWidgets('MediaQueryData.fromWindow is sane', (WidgetTester tester) async {
     final MediaQueryData data = MediaQueryData.fromWindow(WidgetsBinding.instance.window);
     expect(data, hasOneLineDescription);
     expect(data.hashCode, equals(data.copyWith().hashCode));
@@ -71,6 +111,8 @@ void main() {
     expect(data.boldText, false);
     expect(data.highContrast, false);
     expect(data.platformBrightness, Brightness.light);
+    expect(data.gestureSettings.touchSlop, null);
+    expect(data.displayFeatures, isEmpty);
   });
 
   testWidgets('MediaQueryData.copyWith defaults to source', (WidgetTester tester) async {
@@ -90,6 +132,8 @@ void main() {
     expect(copied.boldText, data.boldText);
     expect(copied.highContrast, data.highContrast);
     expect(copied.platformBrightness, data.platformBrightness);
+    expect(copied.gestureSettings, data.gestureSettings);
+    expect(copied.displayFeatures, data.displayFeatures);
   });
 
   testWidgets('MediaQuery.copyWith copies specified values', (WidgetTester tester) async {
@@ -102,6 +146,14 @@ void main() {
     const EdgeInsets customViewPadding = EdgeInsets.all(11.24031);
     const EdgeInsets customViewInsets = EdgeInsets.all(1.67262);
     const EdgeInsets customSystemGestureInsets = EdgeInsets.all(1.5556);
+    const DeviceGestureSettings gestureSettings = DeviceGestureSettings(touchSlop: 8.0);
+    const List<DisplayFeature> customDisplayFeatures = <DisplayFeature>[
+      DisplayFeature(
+        bounds: Rect.zero,
+        type: DisplayFeatureType.cutout,
+        state: DisplayFeatureState.unknown,
+      ),
+    ];
 
     final MediaQueryData data = MediaQueryData.fromWindow(WidgetsBinding.instance.window);
     final MediaQueryData copied = data.copyWith(
@@ -119,6 +171,9 @@ void main() {
       boldText: true,
       highContrast: true,
       platformBrightness: Brightness.dark,
+      navigationMode: NavigationMode.directional,
+      gestureSettings: gestureSettings,
+      displayFeatures: customDisplayFeatures,
     );
     expect(copied.size, customSize);
     expect(copied.devicePixelRatio, customDevicePixelRatio);
@@ -134,6 +189,9 @@ void main() {
     expect(copied.boldText, true);
     expect(copied.highContrast, true);
     expect(copied.platformBrightness, Brightness.dark);
+    expect(copied.navigationMode, NavigationMode.directional);
+    expect(copied.gestureSettings, gestureSettings);
+    expect(copied.displayFeatures, customDisplayFeatures);
   });
 
   testWidgets('MediaQuery.removePadding removes specified padding', (WidgetTester tester) async {
@@ -143,8 +201,15 @@ void main() {
     const EdgeInsets padding = EdgeInsets.only(top: 1.0, right: 2.0, left: 3.0, bottom: 4.0);
     const EdgeInsets viewPadding = EdgeInsets.only(top: 6.0, right: 8.0, left: 10.0, bottom: 12.0);
     const EdgeInsets viewInsets = EdgeInsets.only(top: 5.0, right: 6.0, left: 7.0, bottom: 8.0);
+    const List<DisplayFeature> displayFeatures = <DisplayFeature>[
+      DisplayFeature(
+        bounds: Rect.zero,
+        type: DisplayFeatureType.cutout,
+        state: DisplayFeatureState.unknown,
+      ),
+    ];
 
-    MediaQueryData unpadded;
+    late MediaQueryData unpadded;
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(
@@ -160,6 +225,8 @@ void main() {
           disableAnimations: true,
           boldText: true,
           highContrast: true,
+          navigationMode: NavigationMode.directional,
+          displayFeatures: displayFeatures,
         ),
         child: Builder(
           builder: (BuildContext context) {
@@ -193,6 +260,8 @@ void main() {
     expect(unpadded.disableAnimations, true);
     expect(unpadded.boldText, true);
     expect(unpadded.highContrast, true);
+    expect(unpadded.navigationMode, NavigationMode.directional);
+    expect(unpadded.displayFeatures, displayFeatures);
   });
 
   testWidgets('MediaQuery.removePadding only removes specified padding', (WidgetTester tester) async {
@@ -202,8 +271,15 @@ void main() {
     const EdgeInsets padding = EdgeInsets.only(top: 1.0, right: 2.0, left: 3.0, bottom: 4.0);
     const EdgeInsets viewPadding = EdgeInsets.only(top: 6.0, right: 8.0, left: 10.0, bottom: 12.0);
     const EdgeInsets viewInsets = EdgeInsets.only(top: 5.0, right: 6.0, left: 7.0, bottom: 8.0);
+    const List<DisplayFeature> displayFeatures = <DisplayFeature>[
+      DisplayFeature(
+        bounds: Rect.zero,
+        type: DisplayFeatureType.cutout,
+        state: DisplayFeatureState.unknown,
+      ),
+    ];
 
-    MediaQueryData unpadded;
+    late MediaQueryData unpadded;
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(
@@ -219,6 +295,8 @@ void main() {
           disableAnimations: true,
           boldText: true,
           highContrast: true,
+          navigationMode: NavigationMode.directional,
+          displayFeatures: displayFeatures,
         ),
         child: Builder(
           builder: (BuildContext context) {
@@ -249,6 +327,8 @@ void main() {
     expect(unpadded.disableAnimations, true);
     expect(unpadded.boldText, true);
     expect(unpadded.highContrast, true);
+    expect(unpadded.navigationMode, NavigationMode.directional);
+    expect(unpadded.displayFeatures, displayFeatures);
   });
 
   testWidgets('MediaQuery.removeViewInsets removes specified viewInsets', (WidgetTester tester) async {
@@ -258,8 +338,15 @@ void main() {
     const EdgeInsets padding = EdgeInsets.only(top: 5.0, right: 6.0, left: 7.0, bottom: 8.0);
     const EdgeInsets viewPadding = EdgeInsets.only(top: 6.0, right: 8.0, left: 10.0, bottom: 12.0);
     const EdgeInsets viewInsets = EdgeInsets.only(top: 1.0, right: 2.0, left: 3.0, bottom: 4.0);
+    const List<DisplayFeature> displayFeatures = <DisplayFeature>[
+      DisplayFeature(
+        bounds: Rect.zero,
+        type: DisplayFeatureType.cutout,
+        state: DisplayFeatureState.unknown,
+      ),
+    ];
 
-    MediaQueryData unpadded;
+    late MediaQueryData unpadded;
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(
@@ -275,6 +362,8 @@ void main() {
           disableAnimations: true,
           boldText: true,
           highContrast: true,
+          navigationMode: NavigationMode.directional,
+          displayFeatures: displayFeatures,
         ),
         child: Builder(
           builder: (BuildContext context) {
@@ -308,6 +397,8 @@ void main() {
     expect(unpadded.disableAnimations, true);
     expect(unpadded.boldText, true);
     expect(unpadded.highContrast, true);
+    expect(unpadded.navigationMode, NavigationMode.directional);
+    expect(unpadded.displayFeatures, displayFeatures);
   });
 
   testWidgets('MediaQuery.removeViewInsets removes only specified viewInsets', (WidgetTester tester) async {
@@ -317,8 +408,15 @@ void main() {
     const EdgeInsets padding = EdgeInsets.only(top: 5.0, right: 6.0, left: 7.0, bottom: 8.0);
     const EdgeInsets viewPadding = EdgeInsets.only(top: 6.0, right: 8.0, left: 10.0, bottom: 12.0);
     const EdgeInsets viewInsets = EdgeInsets.only(top: 1.0, right: 2.0, left: 3.0, bottom: 4.0);
+    const List<DisplayFeature> displayFeatures = <DisplayFeature>[
+      DisplayFeature(
+        bounds: Rect.zero,
+        type: DisplayFeatureType.cutout,
+        state: DisplayFeatureState.unknown,
+      ),
+    ];
 
-    MediaQueryData unpadded;
+    late MediaQueryData unpadded;
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(
@@ -334,6 +432,8 @@ void main() {
           disableAnimations: true,
           boldText: true,
           highContrast: true,
+          navigationMode: NavigationMode.directional,
+          displayFeatures: displayFeatures,
         ),
         child: Builder(
           builder: (BuildContext context) {
@@ -364,6 +464,8 @@ void main() {
     expect(unpadded.disableAnimations, true);
     expect(unpadded.boldText, true);
     expect(unpadded.highContrast, true);
+    expect(unpadded.navigationMode, NavigationMode.directional);
+    expect(unpadded.displayFeatures, displayFeatures);
   });
 
   testWidgets('MediaQuery.removeViewPadding removes specified viewPadding', (WidgetTester tester) async {
@@ -373,8 +475,15 @@ void main() {
     const EdgeInsets padding = EdgeInsets.only(top: 5.0, right: 6.0, left: 7.0, bottom: 8.0);
     const EdgeInsets viewPadding = EdgeInsets.only(top: 6.0, right: 8.0, left: 10.0, bottom: 12.0);
     const EdgeInsets viewInsets = EdgeInsets.only(top: 1.0, right: 2.0, left: 3.0, bottom: 4.0);
+    const List<DisplayFeature> displayFeatures = <DisplayFeature>[
+      DisplayFeature(
+        bounds: Rect.zero,
+        type: DisplayFeatureType.cutout,
+        state: DisplayFeatureState.unknown,
+      ),
+    ];
 
-    MediaQueryData unpadded;
+    late MediaQueryData unpadded;
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(
@@ -390,6 +499,8 @@ void main() {
           disableAnimations: true,
           boldText: true,
           highContrast: true,
+          navigationMode: NavigationMode.directional,
+          displayFeatures: displayFeatures,
         ),
         child: Builder(
           builder: (BuildContext context) {
@@ -423,6 +534,8 @@ void main() {
     expect(unpadded.disableAnimations, true);
     expect(unpadded.boldText, true);
     expect(unpadded.highContrast, true);
+    expect(unpadded.navigationMode, NavigationMode.directional);
+    expect(unpadded.displayFeatures, displayFeatures);
   });
 
   testWidgets('MediaQuery.removeViewPadding removes only specified viewPadding', (WidgetTester tester) async {
@@ -432,8 +545,15 @@ void main() {
     const EdgeInsets padding = EdgeInsets.only(top: 5.0, right: 6.0, left: 7.0, bottom: 8.0);
     const EdgeInsets viewPadding = EdgeInsets.only(top: 6.0, right: 8.0, left: 10.0, bottom: 12.0);
     const EdgeInsets viewInsets = EdgeInsets.only(top: 1.0, right: 2.0, left: 3.0, bottom: 4.0);
+    const List<DisplayFeature> displayFeatures = <DisplayFeature>[
+      DisplayFeature(
+        bounds: Rect.zero,
+        type: DisplayFeatureType.cutout,
+        state: DisplayFeatureState.unknown,
+      ),
+    ];
 
-    MediaQueryData unpadded;
+    late MediaQueryData unpadded;
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(
@@ -449,6 +569,8 @@ void main() {
           disableAnimations: true,
           boldText: true,
           highContrast: true,
+          navigationMode: NavigationMode.directional,
+          displayFeatures: displayFeatures,
         ),
         child: Builder(
           builder: (BuildContext context) {
@@ -479,11 +601,13 @@ void main() {
     expect(unpadded.disableAnimations, true);
     expect(unpadded.boldText, true);
     expect(unpadded.highContrast, true);
+    expect(unpadded.navigationMode, NavigationMode.directional);
+    expect(unpadded.displayFeatures, displayFeatures);
   });
 
   testWidgets('MediaQuery.textScaleFactorOf', (WidgetTester tester) async {
-    double outsideTextScaleFactor;
-    double insideTextScaleFactor;
+    late double outsideTextScaleFactor;
+    late double insideTextScaleFactor;
 
     await tester.pumpWidget(
       Builder(
@@ -509,8 +633,8 @@ void main() {
   });
 
   testWidgets('MediaQuery.platformBrightnessOf', (WidgetTester tester) async {
-    Brightness outsideBrightness;
-    Brightness insideBrightness;
+    late Brightness outsideBrightness;
+    late Brightness insideBrightness;
 
     await tester.pumpWidget(
       Builder(
@@ -536,8 +660,8 @@ void main() {
   });
 
   testWidgets('MediaQuery.highContrastOf', (WidgetTester tester) async {
-    bool outsideHighContrast;
-    bool insideHighContrast;
+    late bool outsideHighContrast;
+    late bool insideHighContrast;
 
     await tester.pumpWidget(
       Builder(
@@ -563,8 +687,8 @@ void main() {
   });
 
   testWidgets('MediaQuery.boldTextOverride', (WidgetTester tester) async {
-    bool outsideBoldTextOverride;
-    bool insideBoldTextOverride;
+    late bool outsideBoldTextOverride;
+    late bool insideBoldTextOverride;
 
     await tester.pumpWidget(
       Builder(
@@ -589,158 +713,228 @@ void main() {
     expect(insideBoldTextOverride, true);
   });
 
-  test('size parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(size: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('size != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
+  testWidgets('MediaQuery.fromWindow creates a MediaQuery', (WidgetTester tester) async {
+    bool hasMediaQueryAsParentOutside = false;
+    bool hasMediaQueryAsParentInside = false;
+
+    await tester.pumpWidget(
+      Builder(
+        builder: (BuildContext context) {
+          hasMediaQueryAsParentOutside =
+              context.findAncestorWidgetOfExactType<MediaQuery>() != null;
+          return MediaQuery.fromWindow(
+            child: Builder(
+              builder: (BuildContext context) {
+                hasMediaQueryAsParentInside =
+                    context.findAncestorWidgetOfExactType<MediaQuery>() != null;
+                return const SizedBox();
+              },
+            ),
+          );
+        },
+      ),
+    );
+
+    expect(hasMediaQueryAsParentOutside, false);
+    expect(hasMediaQueryAsParentInside, true);
   });
 
-  test('devicePixelRatio parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(devicePixelRatio: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('devicePixelRatio != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
+  testWidgets('MediaQueryData.fromWindow is created using window values', (WidgetTester tester) async {
+    final MediaQueryData windowData = MediaQueryData.fromWindow(WidgetsBinding.instance.window);
+    late MediaQueryData fromWindowData;
+
+    await tester.pumpWidget(
+      MediaQuery.fromWindow(
+        child: Builder(
+          builder: (BuildContext context) {
+            fromWindowData = MediaQuery.of(context);
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+
+    expect(windowData, equals(fromWindowData));
   });
 
-  test('textScaleFactor parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(textScaleFactor: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('textScaleFactor != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
+  test('DeviceGestureSettings has reasonable hashCode', () {
+    final DeviceGestureSettings settingsA = DeviceGestureSettings(touchSlop: nonconst(16));
+    final DeviceGestureSettings settingsB = DeviceGestureSettings(touchSlop: nonconst(8));
+    final DeviceGestureSettings settingsC = DeviceGestureSettings(touchSlop: nonconst(16));
+
+    expect(settingsA.hashCode, settingsC.hashCode);
+    expect(settingsA.hashCode, isNot(settingsB.hashCode));
   });
 
-  test('platformBrightness parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(platformBrightness: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('platformBrightness != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
+  test('DeviceGestureSettings has reasonable equality', () {
+    final DeviceGestureSettings settingsA = DeviceGestureSettings(touchSlop: nonconst(16));
+    final DeviceGestureSettings settingsB = DeviceGestureSettings(touchSlop: nonconst(8));
+    final DeviceGestureSettings settingsC = DeviceGestureSettings(touchSlop: nonconst(16));
+
+    expect(settingsA, equals(settingsC));
+    expect(settingsA, isNot(settingsB));
   });
 
-  test('padding parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(padding: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('padding != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
+  testWidgets('MediaQuery.removeDisplayFeatures removes specified display features and padding', (WidgetTester tester) async {
+    const Size size = Size(82.0, 40.0);
+    const double devicePixelRatio = 2.0;
+    const double textScaleFactor = 1.2;
+    const EdgeInsets padding = EdgeInsets.only(top: 1.0, right: 2.0, left: 3.0, bottom: 4.0);
+    const EdgeInsets viewPadding = EdgeInsets.only(top: 6.0, right: 8.0, left: 10.0, bottom: 12.0);
+    const EdgeInsets viewInsets = EdgeInsets.only(top: 5.0, right: 6.0, left: 7.0, bottom: 8.0);
+    const List<DisplayFeature> displayFeatures = <DisplayFeature>[
+      DisplayFeature(
+        bounds: Rect.fromLTRB(40, 0, 42, 40),
+        type: DisplayFeatureType.hinge,
+        state: DisplayFeatureState.postureFlat,
+      ),
+      DisplayFeature(
+        bounds: Rect.fromLTRB(70, 10, 74, 14),
+        type: DisplayFeatureType.cutout,
+        state: DisplayFeatureState.unknown,
+      ),
+    ];
+
+    // A section of the screen that intersects no display feature or padding area
+    const Rect subScreen = Rect.fromLTRB(20, 10, 40, 20);
+
+    late MediaQueryData subScreenMediaQuery;
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(
+          size: size,
+          devicePixelRatio: devicePixelRatio,
+          textScaleFactor: textScaleFactor,
+          padding: padding,
+          viewPadding: viewPadding,
+          viewInsets: viewInsets,
+          alwaysUse24HourFormat: true,
+          accessibleNavigation: true,
+          invertColors: true,
+          disableAnimations: true,
+          boldText: true,
+          highContrast: true,
+          displayFeatures: displayFeatures,
+        ),
+        child: Builder(
+          builder: (BuildContext context) {
+            return MediaQuery(
+              data: MediaQuery.of(context).removeDisplayFeatures(subScreen),
+              child: Builder(
+                builder: (BuildContext context) {
+                  subScreenMediaQuery = MediaQuery.of(context);
+                  return Container();
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    expect(subScreenMediaQuery.size, size);
+    expect(subScreenMediaQuery.devicePixelRatio, devicePixelRatio);
+    expect(subScreenMediaQuery.textScaleFactor, textScaleFactor);
+    expect(subScreenMediaQuery.padding, EdgeInsets.zero);
+    expect(subScreenMediaQuery.viewPadding, EdgeInsets.zero);
+    expect(subScreenMediaQuery.viewInsets, EdgeInsets.zero);
+    expect(subScreenMediaQuery.alwaysUse24HourFormat, true);
+    expect(subScreenMediaQuery.accessibleNavigation, true);
+    expect(subScreenMediaQuery.invertColors, true);
+    expect(subScreenMediaQuery.disableAnimations, true);
+    expect(subScreenMediaQuery.boldText, true);
+    expect(subScreenMediaQuery.highContrast, true);
+    expect(subScreenMediaQuery.displayFeatures, isEmpty);
   });
 
-  test('viewInsets parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(viewInsets: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('viewInsets != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
+  testWidgets('MediaQuery.removePadding only removes specified display features and padding', (WidgetTester tester) async {
+    const Size size = Size(82.0, 40.0);
+    const double devicePixelRatio = 2.0;
+    const double textScaleFactor = 1.2;
+    const EdgeInsets padding = EdgeInsets.only(top: 1.0, right: 2.0, left: 3.0, bottom: 4.0);
+    const EdgeInsets viewPadding = EdgeInsets.only(top: 6.0, right: 8.0, left: 46.0, bottom: 12.0);
+    const EdgeInsets viewInsets = EdgeInsets.only(top: 5.0, right: 6.0, left: 7.0, bottom: 8.0);
+    const DisplayFeature cutoutDisplayFeature = DisplayFeature(
+      bounds: Rect.fromLTRB(70, 10, 74, 14),
+      type: DisplayFeatureType.cutout,
+      state: DisplayFeatureState.unknown,
+    );
+    const List<DisplayFeature> displayFeatures = <DisplayFeature>[
+      DisplayFeature(
+        bounds: Rect.fromLTRB(40, 0, 42, 40),
+        type: DisplayFeatureType.hinge,
+        state: DisplayFeatureState.postureFlat,
+      ),
+      cutoutDisplayFeature,
+    ];
+
+    // A section of the screen that does contain display features and padding
+    const Rect subScreen = Rect.fromLTRB(42, 0, 82, 40);
+
+    late MediaQueryData subScreenMediaQuery;
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(
+          size: size,
+          devicePixelRatio: devicePixelRatio,
+          textScaleFactor: textScaleFactor,
+          padding: padding,
+          viewPadding: viewPadding,
+          viewInsets: viewInsets,
+          alwaysUse24HourFormat: true,
+          accessibleNavigation: true,
+          invertColors: true,
+          disableAnimations: true,
+          boldText: true,
+          highContrast: true,
+          displayFeatures: displayFeatures,
+        ),
+        child: Builder(
+          builder: (BuildContext context) {
+            return MediaQuery(
+              data: MediaQuery.of(context).removeDisplayFeatures(subScreen),
+              child: Builder(
+                builder: (BuildContext context) {
+                  subScreenMediaQuery = MediaQuery.of(context);
+                  return Container();
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    expect(subScreenMediaQuery.size, size);
+    expect(subScreenMediaQuery.devicePixelRatio, devicePixelRatio);
+    expect(subScreenMediaQuery.textScaleFactor, textScaleFactor);
+    expect(
+      subScreenMediaQuery.padding,
+      const EdgeInsets.only(top: 1.0, right: 2.0, bottom: 4.0),
+    );
+    expect(
+      subScreenMediaQuery.viewPadding,
+      const EdgeInsets.only(top: 6.0, left: 4.0, right: 8.0, bottom: 12.0),
+    );
+    expect(
+      subScreenMediaQuery.viewInsets,
+      const EdgeInsets.only(top: 5.0, right: 6.0, bottom: 8.0),
+    );
+    expect(subScreenMediaQuery.alwaysUse24HourFormat, true);
+    expect(subScreenMediaQuery.accessibleNavigation, true);
+    expect(subScreenMediaQuery.invertColors, true);
+    expect(subScreenMediaQuery.disableAnimations, true);
+    expect(subScreenMediaQuery.boldText, true);
+    expect(subScreenMediaQuery.highContrast, true);
+    expect(subScreenMediaQuery.displayFeatures, <DisplayFeature>[cutoutDisplayFeature]);
   });
 
-  test('systemGestureInsets parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(systemGestureInsets: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('systemGestureInsets != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
-  });
+  testWidgets('MediaQueryData.gestureSettings is set from window.viewConfiguration', (WidgetTester tester) async {
+    tester.binding.window.viewConfigurationTestValue = const ViewConfiguration(
+      gestureSettings: GestureSettings(physicalDoubleTapSlop: 100, physicalTouchSlop: 100),
+    );
 
-  test('viewPadding parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(viewPadding: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('viewPadding != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
+    expect(MediaQueryData.fromWindow(tester.binding.window).gestureSettings.touchSlop, closeTo(33.33, 0.1)); // Repeating, of course
+    tester.binding.window.viewConfigurationTestValue = null;
   });
-
-  test('alwaysUse24HourFormat parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(alwaysUse24HourFormat: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('alwaysUse24HourFormat != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
-  });
-
-  test('accessibleNavigation parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(accessibleNavigation: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('accessibleNavigation != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
-  });
-
-  test('invertColors parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(invertColors: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('invertColors != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
-  });
-
-  test('highContrast parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(highContrast: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('highContrast != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
-  });
-
-  test('disableAnimations parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(disableAnimations: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('disableAnimations != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
-  });
-
-  test('boldText parameter in MediaQueryData cannot be null', () {
-    try {
-      MediaQueryData(boldText: null);
-    } on AssertionError catch (error) {
-      expect(error.toString(), contains('boldText != null'));
-      expect(error.toString(), contains('is not true'));
-      return;
-    }
-    fail('The assert was never called when it should have been');
-  });
-
 }

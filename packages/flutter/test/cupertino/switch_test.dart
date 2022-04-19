@@ -2,14 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/gestures.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../rendering/mock_canvas.dart';
 
@@ -50,8 +53,9 @@ void main() {
 
     final List<MethodCall> log = <MethodCall>[];
 
-    SystemChannels.platform.setMockMethodCallHandler((MethodCall methodCall) async {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
+      return null;
     });
 
     await tester.pumpWidget(
@@ -90,8 +94,9 @@ void main() {
     bool value2 = false;
     final List<MethodCall> log = <MethodCall>[];
 
-    SystemChannels.platform.setMockMethodCallHandler((MethodCall methodCall) async {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
+      return null;
     });
 
     await tester.pumpWidget(
@@ -157,8 +162,9 @@ void main() {
     bool value = false;
     final List<MethodCall> log = <MethodCall>[];
 
-    SystemChannels.platform.setMockMethodCallHandler((MethodCall methodCall) async {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
+      return null;
     });
 
     await tester.pumpWidget(
@@ -195,8 +201,9 @@ void main() {
     bool value = false;
 
     final List<MethodCall> log = <MethodCall>[];
-    SystemChannels.platform.setMockMethodCallHandler((MethodCall methodCall) async {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
+      return null;
     });
 
     await tester.pumpWidget(
@@ -330,7 +337,6 @@ void main() {
             return Center(
               child: CupertinoSwitch(
                 value: value,
-                dragStartBehavior: DragStartBehavior.start,
                 onChanged: (bool newValue) {
                   setState(() {
                     value = newValue;
@@ -452,6 +458,7 @@ void main() {
     await gesture.up();
     await tester.pump();
     expect(value, isFalse);
+    // ignore: avoid_dynamic_calls
     final CurvedAnimation position = (tester.state(find.byType(CupertinoSwitch)) as dynamic).position as CurvedAnimation;
     expect(position.value, lessThan(0.5));
     await tester.pump();
@@ -526,6 +533,60 @@ void main() {
     expect(find.byType(CupertinoSwitch), findsOneWidget);
     expect(tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch)).trackColor, trackColor);
     expect(find.byType(CupertinoSwitch), paints..rrect(color: trackColor));
+  });
+
+  testWidgets('Switch is using default thumb color', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: CupertinoSwitch(
+            value: false,
+            onChanged: null,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(CupertinoSwitch), findsOneWidget);
+    expect(tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch)).thumbColor, null);
+    expect(
+      find.byType(CupertinoSwitch),
+      paints
+        ..rrect()
+        ..rrect()
+        ..rrect()
+        ..rrect()
+        ..rrect(color: CupertinoColors.white),
+    );
+  });
+
+  testWidgets('Switch is using thumb color when set', (WidgetTester tester) async {
+    const Color thumbColor = Color(0xFF000000);
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: CupertinoSwitch(
+            value: false,
+            thumbColor: thumbColor,
+            onChanged: null,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(CupertinoSwitch), findsOneWidget);
+    expect(tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch)).thumbColor, thumbColor);
+    expect(
+      find.byType(CupertinoSwitch),
+      paints
+        ..rrect()
+        ..rrect()
+        ..rrect()
+        ..rrect()
+        ..rrect(color: thumbColor),
+    );
   });
 
   testWidgets('Switch is opaque when enabled', (WidgetTester tester) async {
@@ -700,6 +761,63 @@ void main() {
     await expectLater(
       find.byKey(switchKey),
       matchesGoldenFile('switch.tap.on.dark.png'),
+    );
+  });
+
+  testWidgets('Hovering over Cupertino switch updates cursor to clickable on Web', (WidgetTester tester) async {
+    const bool value = false;
+    // Disabled CupertinoSwitch does not update cursor on Web.
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return const Center(
+              child: CupertinoSwitch(
+                value: value,
+                dragStartBehavior: DragStartBehavior.down,
+                onChanged: null,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse, pointer: 1);
+    final Offset cupertinoSwitch = tester.getCenter(find.byType(CupertinoSwitch));
+    await gesture.addPointer(location: cupertinoSwitch);
+    await tester.pumpAndSettle();
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.basic);
+
+    // Enabled CupertinoSwitch updates cursor when hovering on Web.
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Center(
+              child: CupertinoSwitch(
+                value: value,
+                dragStartBehavior: DragStartBehavior.down,
+                onChanged: (bool newValue) { },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await gesture.moveTo(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.basic);
+
+    await gesture.moveTo(cupertinoSwitch);
+    addTearDown(gesture.removePointer);
+    await tester.pumpAndSettle();
+    expect(
+      RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1),
+      kIsWeb ? SystemMouseCursors.click : SystemMouseCursors.basic,
     );
   });
 }

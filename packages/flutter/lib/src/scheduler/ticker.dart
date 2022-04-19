@@ -113,9 +113,9 @@ class Ticker {
       return false;
     if (muted)
       return false;
-    if (SchedulerBinding.instance!.framesEnabled)
+    if (SchedulerBinding.instance.framesEnabled)
       return true;
-    if (SchedulerBinding.instance!.schedulerPhase != SchedulerPhase.idle)
+    if (SchedulerBinding.instance.schedulerPhase != SchedulerPhase.idle)
       return true; // for example, we might be in a warm-up frame or forced frame
     return false;
   }
@@ -161,9 +161,9 @@ class Ticker {
     if (shouldScheduleTick) {
       scheduleTick();
     }
-    if (SchedulerBinding.instance!.schedulerPhase.index > SchedulerPhase.idle.index &&
-        SchedulerBinding.instance!.schedulerPhase.index < SchedulerPhase.postFrameCallbacks.index)
-      _startTime = SchedulerBinding.instance!.currentFrameTimeStamp;
+    if (SchedulerBinding.instance.schedulerPhase.index > SchedulerPhase.idle.index &&
+        SchedulerBinding.instance.schedulerPhase.index < SchedulerPhase.postFrameCallbacks.index)
+      _startTime = SchedulerBinding.instance.currentFrameTimeStamp;
     return _future!;
   }
 
@@ -250,7 +250,7 @@ class Ticker {
   void scheduleTick({ bool rescheduling = false }) {
     assert(!scheduled);
     assert(shouldScheduleTick);
-    _animationId = SchedulerBinding.instance!.scheduleFrameCallback(_tick, rescheduling: rescheduling);
+    _animationId = SchedulerBinding.instance.scheduleFrameCallback(_tick, rescheduling: rescheduling);
   }
 
   /// Cancels the frame callback that was requested by [scheduleTick], if any.
@@ -262,7 +262,7 @@ class Ticker {
   @protected
   void unscheduleTick() {
     if (scheduled) {
-      SchedulerBinding.instance!.cancelFrameCallbackWithId(_animationId!);
+      SchedulerBinding.instance.cancelFrameCallbackWithId(_animationId!);
       _animationId = null;
     }
     assert(!shouldScheduleTick);
@@ -296,6 +296,14 @@ class Ticker {
 
   /// Release the resources used by this object. The object is no longer usable
   /// after this method is called.
+  ///
+  /// It is legal to call this method while [isActive] is true, in which case:
+  ///
+  ///  * The frame callback that was requested by [scheduleTick], if any, is
+  ///    canceled.
+  ///  * The future that was returned by [start] does not resolve.
+  ///  * The future obtained from [TickerFuture.orCancel], if any, resolves
+  ///    with a [TickerCanceled] error.
   @mustCallSuper
   void dispose() {
     if (_future != null) {
@@ -434,7 +442,7 @@ class TickerFuture implements Future<void> {
   }
 
   @override
-  Future<R> then<R>(FutureOr<R> onValue(void value), { Function? onError }) {
+  Future<R> then<R>(FutureOr<R> Function(void value) onValue, { Function? onError }) {
     return _primaryCompleter.future.then<R>(onValue, onError: onError);
   }
 
@@ -444,7 +452,7 @@ class TickerFuture implements Future<void> {
   }
 
   @override
-  Future<void> whenComplete(dynamic action()) {
+  Future<void> whenComplete(dynamic Function() action) {
     return _primaryCompleter.future.whenComplete(action);
   }
 

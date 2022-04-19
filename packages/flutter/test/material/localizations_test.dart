@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -20,6 +18,8 @@ void main() {
     expect(localizations.previousMonthTooltip, isNotNull);
     expect(localizations.nextPageTooltip, isNotNull);
     expect(localizations.previousPageTooltip, isNotNull);
+    expect(localizations.firstPageTooltip, isNotNull);
+    expect(localizations.lastPageTooltip, isNotNull);
     expect(localizations.showMenuTooltip, isNotNull);
     expect(localizations.licensesPageTitle, isNotNull);
     expect(localizations.rowsPerPageTitle, isNotNull);
@@ -74,6 +74,64 @@ void main() {
     expect(localizations.reorderItemDown, isNotNull);
     expect(localizations.reorderItemLeft, isNotNull);
     expect(localizations.reorderItemRight, isNotNull);
+    expect(localizations.keyboardKeyAlt, isNotNull);
+    expect(localizations.keyboardKeyAltGraph, isNotNull);
+    expect(localizations.keyboardKeyBackspace, isNotNull);
+    expect(localizations.keyboardKeyCapsLock, isNotNull);
+    expect(localizations.keyboardKeyChannelDown, isNotNull);
+    expect(localizations.keyboardKeyChannelUp, isNotNull);
+    expect(localizations.keyboardKeyControl, isNotNull);
+    expect(localizations.keyboardKeyDelete, isNotNull);
+    expect(localizations.keyboardKeyEisu, isNotNull);
+    expect(localizations.keyboardKeyEject, isNotNull);
+    expect(localizations.keyboardKeyEnd, isNotNull);
+    expect(localizations.keyboardKeyEscape, isNotNull);
+    expect(localizations.keyboardKeyFn, isNotNull);
+    expect(localizations.keyboardKeyHangulMode, isNotNull);
+    expect(localizations.keyboardKeyHanjaMode, isNotNull);
+    expect(localizations.keyboardKeyHankaku, isNotNull);
+    expect(localizations.keyboardKeyHiragana, isNotNull);
+    expect(localizations.keyboardKeyHiraganaKatakana, isNotNull);
+    expect(localizations.keyboardKeyHome, isNotNull);
+    expect(localizations.keyboardKeyInsert, isNotNull);
+    expect(localizations.keyboardKeyKanaMode, isNotNull);
+    expect(localizations.keyboardKeyKanjiMode, isNotNull);
+    expect(localizations.keyboardKeyKatakana, isNotNull);
+    expect(localizations.keyboardKeyMeta, isNotNull);
+    expect(localizations.keyboardKeyMetaMacOs, isNotNull);
+    expect(localizations.keyboardKeyMetaWindows, isNotNull);
+    expect(localizations.keyboardKeyNumLock, isNotNull);
+    expect(localizations.keyboardKeyNumpad1, isNotNull);
+    expect(localizations.keyboardKeyNumpad2, isNotNull);
+    expect(localizations.keyboardKeyNumpad3, isNotNull);
+    expect(localizations.keyboardKeyNumpad4, isNotNull);
+    expect(localizations.keyboardKeyNumpad5, isNotNull);
+    expect(localizations.keyboardKeyNumpad6, isNotNull);
+    expect(localizations.keyboardKeyNumpad7, isNotNull);
+    expect(localizations.keyboardKeyNumpad8, isNotNull);
+    expect(localizations.keyboardKeyNumpad9, isNotNull);
+    expect(localizations.keyboardKeyNumpad0, isNotNull);
+    expect(localizations.keyboardKeyNumpadAdd, isNotNull);
+    expect(localizations.keyboardKeyNumpadComma, isNotNull);
+    expect(localizations.keyboardKeyNumpadDecimal, isNotNull);
+    expect(localizations.keyboardKeyNumpadDivide, isNotNull);
+    expect(localizations.keyboardKeyNumpadEnter, isNotNull);
+    expect(localizations.keyboardKeyNumpadEqual, isNotNull);
+    expect(localizations.keyboardKeyNumpadMultiply, isNotNull);
+    expect(localizations.keyboardKeyNumpadParenLeft, isNotNull);
+    expect(localizations.keyboardKeyNumpadParenRight, isNotNull);
+    expect(localizations.keyboardKeyNumpadSubtract, isNotNull);
+    expect(localizations.keyboardKeyPageDown, isNotNull);
+    expect(localizations.keyboardKeyPageUp, isNotNull);
+    expect(localizations.keyboardKeyPower, isNotNull);
+    expect(localizations.keyboardKeyPowerOff, isNotNull);
+    expect(localizations.keyboardKeyPrintScreen, isNotNull);
+    expect(localizations.keyboardKeyRomaji, isNotNull);
+    expect(localizations.keyboardKeyScrollLock, isNotNull);
+    expect(localizations.keyboardKeySelect, isNotNull);
+    expect(localizations.keyboardKeySpace, isNotNull);
+    expect(localizations.keyboardKeyZenkaku, isNotNull);
+    expect(localizations.keyboardKeyZenkakuHankaku, isNotNull);
 
     expect(localizations.aboutListTileTitle('FOO'), isNotNull);
     expect(localizations.aboutListTileTitle('FOO'), contains('FOO'));
@@ -103,5 +161,29 @@ void main() {
     expect(localizations.licensesPackageDetailText(1).contains(r'$licensesCount'), isFalse);
     expect(localizations.licensesPackageDetailText(2).contains(r'$licensesCount'), isFalse);
     expect(localizations.licensesPackageDetailText(100).contains(r'$licensesCount'), isFalse);
+  });
+
+  testWidgets('MaterialLocalizations.of throws', (WidgetTester tester) async {
+    final GlobalKey noLocalizationsAvailable = GlobalKey();
+    final GlobalKey localizationsAvailable = GlobalKey();
+
+    await tester.pumpWidget(
+      Container(
+        key: noLocalizationsAvailable,
+        child: MaterialApp(
+          home: Container(
+            key: localizationsAvailable,
+          ),
+        ),
+      ),
+    );
+
+    expect(() => MaterialLocalizations.of(noLocalizationsAvailable.currentContext!), throwsA(isAssertionError.having(
+      (AssertionError e) => e.message,
+      'message',
+      contains('No MaterialLocalizations found'),
+    )));
+
+    expect(MaterialLocalizations.of(localizationsAvailable.currentContext!), isA<MaterialLocalizations>());
   });
 }

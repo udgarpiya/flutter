@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:async';
 
 import 'package:flutter/painting.dart';
@@ -43,7 +41,7 @@ import 'scrollable.dart';
 /// overutilization of resources for images that would never appear on screen or
 /// only be visible for a very brief period.
 @optionalTypeArgs
-class ScrollAwareImageProvider<T> extends ImageProvider<T> {
+class ScrollAwareImageProvider<T extends Object> extends ImageProvider<T> {
   /// Creates a [ScrollAwareImageProvider].
   ///
   /// The [context] object is the [BuildContext] of the [State] using this
@@ -54,8 +52,8 @@ class ScrollAwareImageProvider<T> extends ImageProvider<T> {
   /// not be null, and is assumed to interact with the cache in the normal way
   /// that [ImageProvider.resolveStreamForKey] does.
   const ScrollAwareImageProvider({
-    @required this.context,
-    @required this.imageProvider,
+    required this.context,
+    required this.imageProvider,
   }) : assert(context != null),
        assert(imageProvider != null);
 
@@ -97,11 +95,11 @@ class ScrollAwareImageProvider<T> extends ImageProvider<T> {
     // too fast before scheduling work that might never show on screen.
     // Try to get to end of the frame callbacks of the next frame, and then
     // check again.
-    if (Scrollable.recommendDeferredLoadingForContext(context.context)) {
-        SchedulerBinding.instance.scheduleFrameCallback((_) {
-          scheduleMicrotask(() => resolveStreamForKey(configuration, stream, key, handleError));
-        });
-        return;
+    if (Scrollable.recommendDeferredLoadingForContext(context.context!)) {
+      SchedulerBinding.instance.scheduleFrameCallback((_) {
+        scheduleMicrotask(() => resolveStreamForKey(configuration, stream, key, handleError));
+      });
+      return;
     }
     // We are in the tree, we're not scrolling too fast, the cache doesn't
     // have our image, and no one has otherwise completed the stream.  Go.

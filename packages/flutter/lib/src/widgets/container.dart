@@ -2,10 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
 
 import 'basic.dart';
@@ -13,7 +10,7 @@ import 'framework.dart';
 import 'image.dart';
 
 // Examples can assume:
-// BuildContext context;
+// late BuildContext context;
 
 /// A widget that paints a [Decoration] either before or after its child paints.
 ///
@@ -30,14 +27,14 @@ import 'image.dart';
 /// This sample shows a radial gradient that draws a moon on a night sky:
 ///
 /// ```dart
-/// DecoratedBox(
+/// const DecoratedBox(
 ///   decoration: BoxDecoration(
 ///     gradient: RadialGradient(
-///       center: const Alignment(-0.5, -0.6),
+///       center: Alignment(-0.5, -0.6),
 ///       radius: 0.15,
 ///       colors: <Color>[
-///         const Color(0xFFEEEEEE),
-///         const Color(0xFF111133),
+///         Color(0xFFEEEEEE),
+///         Color(0xFF111133),
 ///       ],
 ///       stops: <double>[0.9, 1.0],
 ///     ),
@@ -61,13 +58,12 @@ class DecoratedBox extends SingleChildRenderObjectWidget {
   /// The [decoration] and [position] arguments must not be null. By default the
   /// decoration paints behind the child.
   const DecoratedBox({
-    Key key,
-    @required this.decoration,
+    super.key,
+    required this.decoration,
     this.position = DecorationPosition.background,
-    Widget child,
+    super.child,
   }) : assert(decoration != null),
-       assert(position != null),
-       super(key: key, child: child);
+       assert(position != null);
 
   /// What decoration to paint.
   ///
@@ -97,26 +93,17 @@ class DecoratedBox extends SingleChildRenderObjectWidget {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    String label;
-    if (position != null) {
-      switch (position) {
-        case DecorationPosition.background:
-          label = 'bg';
-          break;
-        case DecorationPosition.foreground:
-          label = 'fg';
-          break;
-      }
-    } else {
-      label = 'decoration';
+    final String label;
+    switch (position) {
+      case DecorationPosition.background:
+        label = 'bg';
+        break;
+      case DecorationPosition.foreground:
+        label = 'fg';
+        break;
     }
-    properties.add(EnumProperty<DecorationPosition>('position', position, level: position != null ? DiagnosticLevel.hidden : DiagnosticLevel.info));
-    properties.add(DiagnosticsProperty<Decoration>(
-      label,
-      decoration,
-      ifNull: 'no decoration',
-      showName: decoration != null,
-    ));
+    properties.add(EnumProperty<DecorationPosition>('position', position, level: DiagnosticLevel.hidden));
+    properties.add(DiagnosticsProperty<Decoration>(label, decoration));
   }
 }
 
@@ -229,17 +216,17 @@ class DecoratedBox extends SingleChildRenderObjectWidget {
 /// ```dart
 /// Container(
 ///   constraints: BoxConstraints.expand(
-///     height: Theme.of(context).textTheme.headline4.fontSize * 1.1 + 200.0,
+///     height: Theme.of(context).textTheme.headline4!.fontSize! * 1.1 + 200.0,
 ///   ),
 ///   padding: const EdgeInsets.all(8.0),
 ///   color: Colors.blue[600],
 ///   alignment: Alignment.center,
+///   transform: Matrix4.rotationZ(0.1),
 ///   child: Text('Hello World',
 ///     style: Theme.of(context)
 ///         .textTheme
-///         .headline4
+///         .headline4!
 ///         .copyWith(color: Colors.white)),
-///   transform: Matrix4.rotationZ(0.1),
 /// )
 /// ```
 /// {@end-tool}
@@ -263,17 +250,18 @@ class Container extends StatelessWidget {
   /// color. To supply a decoration with a color, use `decoration:
   /// BoxDecoration(color: color)`.
   Container({
-    Key key,
+    super.key,
     this.alignment,
     this.padding,
     this.color,
     this.decoration,
     this.foregroundDecoration,
-    double width,
-    double height,
-    BoxConstraints constraints,
+    double? width,
+    double? height,
+    BoxConstraints? constraints,
     this.margin,
     this.transform,
+    this.transformAlignment,
     this.child,
     this.clipBehavior = Clip.none,
   }) : assert(margin == null || margin.isNonNegative),
@@ -284,14 +272,13 @@ class Container extends StatelessWidget {
        assert(decoration != null || clipBehavior == Clip.none),
        assert(color == null || decoration == null,
          'Cannot provide both a color and a decoration\n'
-         'To provide both, use "decoration: BoxDecoration(color: color)".'
+         'To provide both, use "decoration: BoxDecoration(color: color)".',
        ),
        constraints =
         (width != null || height != null)
           ? constraints?.tighten(width: width, height: height)
             ?? BoxConstraints.tightFor(width: width, height: height)
-          : constraints,
-       super(key: key);
+          : constraints;
 
   /// The [child] contained by the container.
   ///
@@ -300,8 +287,8 @@ class Container extends StatelessWidget {
   /// the parent provides unbounded constraints, in which case the container
   /// will attempt to be as small as possible.
   ///
-  /// {@macro flutter.widgets.child}
-  final Widget child;
+  /// {@macro flutter.widgets.ProxyWidget.child}
+  final Widget? child;
 
   /// Align the [child] within the container.
   ///
@@ -317,14 +304,14 @@ class Container extends StatelessWidget {
   ///    specify an [AlignmentGeometry].
   ///  * [AlignmentDirectional], like [Alignment] for specifying alignments
   ///    relative to text direction.
-  final AlignmentGeometry alignment;
+  final AlignmentGeometry? alignment;
 
   /// Empty space to inscribe inside the [decoration]. The [child], if any, is
   /// placed inside this padding.
   ///
   /// This padding is in addition to any padding inherent in the [decoration];
   /// see [Decoration.padding].
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
 
   /// The color to paint behind the [child].
   ///
@@ -335,7 +322,7 @@ class Container extends StatelessWidget {
   /// If the [decoration] is used, this property must be null. A background
   /// color may still be painted by the [decoration] even if this property is
   /// null.
-  final Color color;
+  final Color? color;
 
   /// The decoration to paint behind the [child].
   ///
@@ -343,10 +330,10 @@ class Container extends StatelessWidget {
   ///
   /// The [child] is not clipped to the decoration. To clip a child to the shape
   /// of a particular [ShapeDecoration], consider using a [ClipPath] widget.
-  final Decoration decoration;
+  final Decoration? decoration;
 
   /// The decoration to paint in front of the [child].
-  final Decoration foregroundDecoration;
+  final Decoration? foregroundDecoration;
 
   /// Additional constraints to apply to the child.
   ///
@@ -354,13 +341,22 @@ class Container extends StatelessWidget {
   /// `constraints` argument to set this property.
   ///
   /// The [padding] goes inside the constraints.
-  final BoxConstraints constraints;
+  final BoxConstraints? constraints;
 
   /// Empty space to surround the [decoration] and [child].
-  final EdgeInsetsGeometry margin;
+  final EdgeInsetsGeometry? margin;
 
   /// The transformation matrix to apply before painting the container.
-  final Matrix4 transform;
+  final Matrix4? transform;
+
+  /// The alignment of the origin, relative to the size of the container, if [transform] is specified.
+  ///
+  /// When [transform] is null, the value of this property is ignored.
+  ///
+  /// See also:
+  ///
+  ///  * [Transform.alignment], which is set by this property.
+  final AlignmentGeometry? transformAlignment;
 
   /// The clip behavior when [Container.decoration] is not null.
   ///
@@ -372,43 +368,42 @@ class Container extends StatelessWidget {
   /// method throws an [UnsupportedError].)
   final Clip clipBehavior;
 
-  EdgeInsetsGeometry get _paddingIncludingDecoration {
-    if (decoration == null || decoration.padding == null)
+  EdgeInsetsGeometry? get _paddingIncludingDecoration {
+    if (decoration == null || decoration!.padding == null)
       return padding;
-    final EdgeInsetsGeometry decorationPadding = decoration.padding;
+    final EdgeInsetsGeometry? decorationPadding = decoration!.padding;
     if (padding == null)
       return decorationPadding;
-    return padding.add(decorationPadding);
+    return padding!.add(decorationPadding!);
   }
 
   @override
   Widget build(BuildContext context) {
-    Widget current = child;
+    Widget? current = child;
 
-    if (child == null && (constraints == null || !constraints.isTight)) {
+    if (child == null && (constraints == null || !constraints!.isTight)) {
       current = LimitedBox(
         maxWidth: 0.0,
         maxHeight: 0.0,
         child: ConstrainedBox(constraints: const BoxConstraints.expand()),
       );
+    } else if (alignment != null) {
+      current = Align(alignment: alignment!, child: current);
     }
 
-    if (alignment != null)
-      current = Align(alignment: alignment, child: current);
-
-    final EdgeInsetsGeometry effectivePadding = _paddingIncludingDecoration;
+    final EdgeInsetsGeometry? effectivePadding = _paddingIncludingDecoration;
     if (effectivePadding != null)
       current = Padding(padding: effectivePadding, child: current);
 
     if (color != null)
-      current = ColoredBox(color: color, child: current);
+      current = ColoredBox(color: color!, child: current);
 
     if (clipBehavior != Clip.none) {
       assert(decoration != null);
       current = ClipPath(
         clipper: _DecorationClipper(
-          textDirection: Directionality.of(context),
-          decoration: decoration
+          textDirection: Directionality.maybeOf(context),
+          decoration: decoration!,
         ),
         clipBehavior: clipBehavior,
         child: current,
@@ -416,26 +411,26 @@ class Container extends StatelessWidget {
     }
 
     if (decoration != null)
-      current = DecoratedBox(decoration: decoration, child: current);
+      current = DecoratedBox(decoration: decoration!, child: current);
 
     if (foregroundDecoration != null) {
       current = DecoratedBox(
-        decoration: foregroundDecoration,
+        decoration: foregroundDecoration!,
         position: DecorationPosition.foreground,
         child: current,
       );
     }
 
     if (constraints != null)
-      current = ConstrainedBox(constraints: constraints, child: current);
+      current = ConstrainedBox(constraints: constraints!, child: current);
 
     if (margin != null)
-      current = Padding(padding: margin, child: current);
+      current = Padding(padding: margin!, child: current);
 
     if (transform != null)
-      current = Transform(transform: transform, child: current);
+      current = Transform(transform: transform!, alignment: transformAlignment, child: current);
 
-    return current;
+    return current!;
   }
 
   @override
@@ -458,8 +453,8 @@ class Container extends StatelessWidget {
 /// A clipper that uses [Decoration.getClipPath] to clip.
 class _DecorationClipper extends CustomClipper<Path> {
   _DecorationClipper({
-    TextDirection textDirection,
-    @required this.decoration
+    TextDirection? textDirection,
+    required this.decoration,
   }) : assert(decoration != null),
        textDirection = textDirection ?? TextDirection.ltr;
 

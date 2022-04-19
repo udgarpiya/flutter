@@ -3,19 +3,17 @@
 // found in the LICENSE file.
 
 import '../../base/file_system.dart';
-import '../../base/logger.dart';
-import '../../project.dart';
-import 'ios_migrator.dart';
+import '../../base/project_migrator.dart';
+import '../../xcode_project.dart';
 
 // Xcode legacy build system no longer supported by Xcode.
 // Set in https://github.com/flutter/flutter/pull/21901/.
 // Removed in https://github.com/flutter/flutter/pull/33684.
-class XcodeBuildSystemMigration extends IOSMigrator {
+class XcodeBuildSystemMigration extends ProjectMigrator {
   XcodeBuildSystemMigration(
     IosProject project,
-    Logger logger,
-  ) : _xcodeWorkspaceSharedSettings = project.xcodeWorkspaceSharedSettings,
-      super(logger);
+    super.logger,
+  ) : _xcodeWorkspaceSharedSettings = project.xcodeWorkspaceSharedSettings;
 
   final File _xcodeWorkspaceSharedSettings;
 

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:ui' show hashValues;
-
 import 'package:meta/meta.dart';
 
 import 'constants.dart';
@@ -121,7 +119,7 @@ class StackFrame {
       packageScheme = 'package';
       final Uri packageUri = Uri.parse(match.group(1)!);
       package = packageUri.pathSegments[0];
-      packagePath = packageUri.path.replaceFirst(packageUri.pathSegments[0] + '/', '');
+      packagePath = packageUri.path.replaceFirst('${packageUri.pathSegments[0]}/', '');
     }
 
     return StackFrame(
@@ -194,7 +192,7 @@ class StackFrame {
       line != '===== asynchronous gap ===========================',
       'Got a stack frame from package:stack_trace, where a vm or web frame was expected. '
       'This can happen if FlutterError.demangleStackTrace was not set in an environment '
-      'that propagates non-standard stack traces to the framework, such as during tests.'
+      'that propagates non-standard stack traces to the framework, such as during tests.',
     );
 
     // Web frames.
@@ -211,7 +209,9 @@ class StackFrame {
     String className = '';
     String method = match.group(2)!.replaceAll('.<anonymous closure>', '');
     if (method.startsWith('new')) {
-      className = method.split(' ')[1];
+      final List<String> methodParts = method.split(' ');
+      // Sometimes a web frame will only read "new" and have no class name.
+      className = methodParts.length > 1 ? method.split(' ')[1] : '<unknown>';
       method = '';
       if (className.contains('.')) {
         final List<String> parts  = className.split('.');
@@ -230,7 +230,7 @@ class StackFrame {
     String packagePath = packageUri.path;
     if (packageUri.scheme == 'dart' || packageUri.scheme == 'package') {
       package = packageUri.pathSegments[0];
-      packagePath = packageUri.path.replaceFirst(packageUri.pathSegments[0] + '/', '');
+      packagePath = packageUri.path.replaceFirst('${packageUri.pathSegments[0]}/', '');
     }
 
     return StackFrame(
@@ -294,7 +294,7 @@ class StackFrame {
   final bool isConstructor;
 
   @override
-  int get hashCode => hashValues(number, package, line, column, className, method, source);
+  int get hashCode => Object.hash(number, package, line, column, className, method, source);
 
   @override
   bool operator ==(Object other) {
