@@ -51,7 +51,6 @@ void main() {
         MaterialApp(
           home: Material(
             child: PlatformMenuBar(
-              body: const Center(child: Text('Body')),
               menus: createTestMenus(
                 onActivate: onActivate,
                 onOpen: onOpen,
@@ -63,6 +62,7 @@ void main() {
                   subSubMenu10[3]: const SingleActivator(LogicalKeyboardKey.keyD, meta: true),
                 },
               ),
+              child: const Center(child: Text('Body')),
             ),
           ),
         ),
@@ -163,11 +163,11 @@ void main() {
         const MaterialApp(
           home: Material(
             child: PlatformMenuBar(
-              body: PlatformMenuBar(
-                body: SizedBox(),
-                menus: <MenuItem>[],
+              menus: <PlatformMenuItem>[],
+              child: PlatformMenuBar(
+                menus: <PlatformMenuItem>[],
+                child: SizedBox(),
               ),
-              menus: <MenuItem>[],
             ),
           ),
         ),
@@ -180,8 +180,8 @@ void main() {
         shortcut: SingleActivator(LogicalKeyboardKey.keyA),
       );
       const PlatformMenuBar menuBar = PlatformMenuBar(
-        body: SizedBox(),
-        menus: <MenuItem>[item],
+        menus: <PlatformMenuItem>[item],
+        child: SizedBox(),
       );
 
       await tester.pumpWidget(
@@ -197,7 +197,7 @@ void main() {
         menuBar.toStringDeep(),
         equalsIgnoringHashCodes(
           'PlatformMenuBar#00000\n'
-          ' └─PlatformMenuItem#00000\n'
+          ' └─PlatformMenuItem#00000(label2)\n'
           '     label: "label2"\n'
           '     shortcut: SingleActivator#00000(keys: Key A)\n'
           '     DISABLED\n',
@@ -205,14 +205,14 @@ void main() {
       );
     });
   });
-  group('PlatformMenuBarItem', () {
+  group('MenuBarItem', () {
     testWidgets('diagnostics', (WidgetTester tester) async {
       const PlatformMenuItem childItem = PlatformMenuItem(
         label: 'label',
       );
       const PlatformMenu item = PlatformMenu(
         label: 'label',
-        menus: <MenuItem>[childItem],
+        menus: <PlatformMenuItem>[childItem],
       );
 
       final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
@@ -258,19 +258,19 @@ const List<String> subMenu2 = <String>[
   'Sub Menu 20',
 ];
 
-List<MenuItem> createTestMenus({
+List<PlatformMenuItem> createTestMenus({
   void Function(String)? onActivate,
   void Function(String)? onOpen,
   void Function(String)? onClose,
   Map<String, MenuSerializableShortcut> shortcuts = const <String, MenuSerializableShortcut>{},
   bool includeStandard = false,
 }) {
-  final List<MenuItem> result = <MenuItem>[
+  final List<PlatformMenuItem> result = <PlatformMenuItem>[
     PlatformMenu(
       label: mainMenu[0],
       onOpen: onOpen != null ? () => onOpen(mainMenu[0]) : null,
       onClose: onClose != null ? () => onClose(mainMenu[0]) : null,
-      menus: <MenuItem>[
+      menus: <PlatformMenuItem>[
         PlatformMenuItem(
           label: subMenu0[0],
           onSelected: onActivate != null ? () => onActivate(subMenu0[0]) : null,
@@ -282,9 +282,9 @@ List<MenuItem> createTestMenus({
       label: mainMenu[1],
       onOpen: onOpen != null ? () => onOpen(mainMenu[1]) : null,
       onClose: onClose != null ? () => onClose(mainMenu[1]) : null,
-      menus: <MenuItem>[
+      menus: <PlatformMenuItem>[
         PlatformMenuItemGroup(
-          members: <MenuItem>[
+          members: <PlatformMenuItem>[
             PlatformMenuItem(
               label: subMenu1[0],
               onSelected: onActivate != null ? () => onActivate(subMenu1[0]) : null,
@@ -296,9 +296,9 @@ List<MenuItem> createTestMenus({
           label: subMenu1[1],
           onOpen: onOpen != null ? () => onOpen(subMenu1[1]) : null,
           onClose: onClose != null ? () => onClose(subMenu1[1]) : null,
-          menus: <MenuItem>[
+          menus: <PlatformMenuItem>[
             PlatformMenuItemGroup(
-              members: <MenuItem>[
+              members: <PlatformMenuItem>[
                 PlatformMenuItem(
                   label: subSubMenu10[0],
                   onSelected: onActivate != null ? () => onActivate(subSubMenu10[0]) : null,
@@ -307,7 +307,7 @@ List<MenuItem> createTestMenus({
               ],
             ),
             PlatformMenuItemGroup(
-              members: <MenuItem>[
+              members: <PlatformMenuItem>[
                 PlatformMenuItem(
                   label: subSubMenu10[1],
                   onSelected: onActivate != null ? () => onActivate(subSubMenu10[1]) : null,
@@ -321,7 +321,7 @@ List<MenuItem> createTestMenus({
               shortcut: shortcuts[subSubMenu10[2]],
             ),
             PlatformMenuItemGroup(
-              members: <MenuItem>[
+              members: <PlatformMenuItem>[
                 PlatformMenuItem(
                   label: subSubMenu10[3],
                   onSelected: onActivate != null ? () => onActivate(subSubMenu10[3]) : null,
@@ -342,7 +342,7 @@ List<MenuItem> createTestMenus({
       label: mainMenu[2],
       onOpen: onOpen != null ? () => onOpen(mainMenu[2]) : null,
       onClose: onClose != null ? () => onClose(mainMenu[2]) : null,
-      menus: <MenuItem>[
+      menus: <PlatformMenuItem>[
         PlatformMenuItem(
           // Always disabled.
           label: subMenu2[0],
@@ -355,7 +355,7 @@ List<MenuItem> createTestMenus({
       label: mainMenu[3],
       onOpen: onOpen != null ? () => onOpen(mainMenu[2]) : null,
       onClose: onClose != null ? () => onClose(mainMenu[2]) : null,
-      menus: <MenuItem>[],
+      menus: <PlatformMenuItem>[],
     ),
   ];
   return result;

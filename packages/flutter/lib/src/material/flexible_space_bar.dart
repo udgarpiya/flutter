@@ -176,8 +176,9 @@ class FlexibleSpaceBar extends StatefulWidget {
 
 class _FlexibleSpaceBarState extends State<FlexibleSpaceBar> {
   bool _getEffectiveCenterTitle(ThemeData theme) {
-    if (widget.centerTitle != null)
+    if (widget.centerTitle != null) {
       return widget.centerTitle!;
+    }
     assert(theme.platform != null);
     switch (theme.platform) {
       case TargetPlatform.android:
@@ -192,8 +193,9 @@ class _FlexibleSpaceBarState extends State<FlexibleSpaceBar> {
   }
 
   Alignment _getTitleAlignment(bool effectiveCenterTitle) {
-    if (effectiveCenterTitle)
+    if (effectiveCenterTitle) {
       return Alignment.bottomCenter;
+    }
     final TextDirection textDirection = Directionality.of(context);
     assert(textDirection != null);
     switch (textDirection) {
@@ -320,7 +322,7 @@ class _FlexibleSpaceBarState extends State<FlexibleSpaceBar> {
 
           final double opacity = settings.toolbarOpacity;
           if (opacity > 0.0) {
-            TextStyle titleStyle = theme.primaryTextTheme.headline6!;
+            TextStyle titleStyle = theme.primaryTextTheme.titleLarge!;
             titleStyle = titleStyle.copyWith(
               color: titleStyle.color!.withOpacity(opacity),
             );
@@ -413,7 +415,7 @@ class FlexibleSpaceBarSettings extends InheritedWidget {
   ///
   /// This value is used by the [AppBar] to resolve
   /// [AppBar.backgroundColor] against [MaterialState.scrolledUnder],
-  /// i.e.  to enable apps to specify different colors when content
+  /// i.e. to enable apps to specify different colors when content
   /// has been scrolled up and behind the app bar.
   ///
   /// Null if the caller hasn't determined if the FlexibleSpaceBar

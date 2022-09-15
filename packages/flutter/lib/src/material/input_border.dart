@@ -109,6 +109,14 @@ class _NoInputBorder extends InputBorder {
   }
 
   @override
+  void paintInterior(Canvas canvas, Rect rect, Paint paint, { TextDirection? textDirection }) {
+    canvas.drawRect(rect, paint);
+  }
+
+  @override
+  bool get preferPaintInterior => true;
+
+  @override
   void paint(
     Canvas canvas,
     Rect rect, {
@@ -195,6 +203,14 @@ class UnderlineInputBorder extends InputBorder {
   }
 
   @override
+  void paintInterior(Canvas canvas, Rect rect, Paint paint, { TextDirection? textDirection }) {
+    canvas.drawRRect(borderRadius.resolve(textDirection).toRRect(rect), paint);
+  }
+
+  @override
+  bool get preferPaintInterior => true;
+
+  @override
   ShapeBorder? lerpFrom(ShapeBorder? a, double t) {
     if (a is UnderlineInputBorder) {
       return UnderlineInputBorder(
@@ -229,17 +245,20 @@ class UnderlineInputBorder extends InputBorder {
     double gapPercentage = 0.0,
     TextDirection? textDirection,
   }) {
-    if (borderRadius.bottomLeft != Radius.zero || borderRadius.bottomRight != Radius.zero)
+    if (borderRadius.bottomLeft != Radius.zero || borderRadius.bottomRight != Radius.zero) {
       canvas.clipPath(getOuterPath(rect, textDirection: textDirection));
+    }
     canvas.drawLine(rect.bottomLeft, rect.bottomRight, borderSide.toPaint());
   }
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other))
+    if (identical(this, other)) {
       return true;
-    if (other.runtimeType != runtimeType)
+    }
+    if (other.runtimeType != runtimeType) {
       return false;
+    }
     return other is InputBorder
         && other.borderSide == borderSide;
   }
@@ -384,6 +403,14 @@ class OutlineInputBorder extends InputBorder {
       ..addRRect(borderRadius.resolve(textDirection).toRRect(rect));
   }
 
+  @override
+  void paintInterior(Canvas canvas, Rect rect, Paint paint, { TextDirection? textDirection }) {
+    canvas.drawRRect(borderRadius.resolve(textDirection).toRRect(rect), paint);
+  }
+
+  @override
+  bool get preferPaintInterior => true;
+
   Path _gapBorderPath(Canvas canvas, RRect center, double start, double extent) {
     // When the corner radii on any side add up to be greater than the
     // given height, each radius has to be scaled to not exceed the
@@ -425,8 +452,9 @@ class OutlineInputBorder extends InputBorder {
     final Path path = Path()
       ..addArc(tlCorner, math.pi, tlCornerArcSweep);
 
-    if (start > scaledRRect.tlRadiusX)
+    if (start > scaledRRect.tlRadiusX) {
       path.lineTo(scaledRRect.left + start, scaledRRect.top);
+    }
 
     const double trCornerArcStart = (3 * math.pi) / 2.0;
     const double trCornerArcSweep = cornerArcSweep;
@@ -495,10 +523,12 @@ class OutlineInputBorder extends InputBorder {
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other))
+    if (identical(this, other)) {
       return true;
-    if (other.runtimeType != runtimeType)
+    }
+    if (other.runtimeType != runtimeType) {
       return false;
+    }
     return other is OutlineInputBorder
         && other.borderSide == borderSide
         && other.borderRadius == borderRadius
