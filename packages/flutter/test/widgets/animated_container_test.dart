@@ -68,30 +68,36 @@ void main() {
 
     expect(box, hasAGoodToStringDeep);
     expect(
-      box.toStringDeep(minLevel: DiagnosticLevel.info),
+      box.toStringDeep(minLevel: DiagnosticLevel.info, wrapWidth: 300),
       equalsIgnoringHashCodes(
         'RenderDecoratedBox#00000\n'
         ' │ parentData: <none>\n'
         ' │ constraints: BoxConstraints(w=800.0, h=600.0)\n'
         ' │ size: Size(800.0, 600.0)\n'
         ' │ decoration: BoxDecoration:\n'
-        ' │   color: Color(0xff0000ff)\n'
-        ' │ configuration: ImageConfiguration(bundle:\n'
-        ' │   PlatformAssetBundle#00000(), devicePixelRatio: 1.0, platform:\n'
-        ' │   android)\n'
+        ' │   color: ${const Color(0xff0000ff)}\n'
+        ' │ configuration: ImageConfiguration(bundle: '
+        'PlatformAssetBundle#00000(), devicePixelRatio: 3.0, platform: '
+        'android)\n'
         ' │\n'
-        ' └─child: RenderLimitedBox#00000\n'
+        ' └─child: RenderPadding#00000\n'
         '   │ parentData: <none> (can use size)\n'
         '   │ constraints: BoxConstraints(w=800.0, h=600.0)\n'
         '   │ size: Size(800.0, 600.0)\n'
-        '   │ maxWidth: 0.0\n'
-        '   │ maxHeight: 0.0\n'
+        '   │ padding: EdgeInsets.zero\n'
         '   │\n'
-        '   └─child: RenderConstrainedBox#00000\n'
-        '       parentData: <none> (can use size)\n'
-        '       constraints: BoxConstraints(w=800.0, h=600.0)\n'
-        '       size: Size(800.0, 600.0)\n'
-        '       additionalConstraints: BoxConstraints(biggest)\n',
+        '   └─child: RenderLimitedBox#00000\n'
+        '     │ parentData: offset=Offset(0.0, 0.0) (can use size)\n'
+        '     │ constraints: BoxConstraints(w=800.0, h=600.0)\n'
+        '     │ size: Size(800.0, 600.0)\n'
+        '     │ maxWidth: 0.0\n'
+        '     │ maxHeight: 0.0\n'
+        '     │\n'
+        '     └─child: RenderConstrainedBox#00000\n'
+        '         parentData: <none> (can use size)\n'
+        '         constraints: BoxConstraints(w=800.0, h=600.0)\n'
+        '         size: Size(800.0, 600.0)\n'
+        '         additionalConstraints: BoxConstraints(biggest)\n',
       ),
     );
   });

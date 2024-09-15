@@ -63,7 +63,7 @@ class TabbedComponentDemoScaffold extends StatefulWidget {
 
 class _TabbedComponentDemoScaffoldState extends State<TabbedComponentDemoScaffold> {
   void _showExampleCode(BuildContext context) {
-    final String? tag = widget.demos![DefaultTabController.of(context)!.index].exampleCodeTag;
+    final String? tag = widget.demos![DefaultTabController.of(context).index].exampleCodeTag;
     if (tag != null) {
       Navigator.push(context, MaterialPageRoute<FullScreenCodeDialog>(
         builder: (BuildContext context) => FullScreenCodeDialog(exampleCodeTag: tag)
@@ -72,7 +72,7 @@ class _TabbedComponentDemoScaffoldState extends State<TabbedComponentDemoScaffol
   }
 
   Future<void> _showApiDocumentation(BuildContext context) async {
-    final String? url = widget.demos![DefaultTabController.of(context)!.index].documentationUrl;
+    final String? url = widget.demos![DefaultTabController.of(context).index].documentationUrl;
     if (url == null) {
       return;
     }
@@ -80,7 +80,7 @@ class _TabbedComponentDemoScaffoldState extends State<TabbedComponentDemoScaffol
     final Uri uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
-    } else if (mounted) {
+    } else if (context.mounted) {
       showDialog<void>(
         context: context,
         builder: (BuildContext context) {
@@ -183,8 +183,8 @@ class FullScreenCodeDialogState extends State<FullScreenCodeDialog> {
   @override
   Widget build(BuildContext context) {
     final SyntaxHighlighterStyle style = Theme.of(context).brightness == Brightness.dark
-      ? SyntaxHighlighterStyle.darkThemeStyle()
-      : SyntaxHighlighterStyle.lightThemeStyle();
+      ? SyntaxHighlighterStyle.darkThemeStyle
+      : SyntaxHighlighterStyle.lightThemeStyle;
 
     Widget body;
     if (_exampleCode == null) {

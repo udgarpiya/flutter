@@ -48,7 +48,7 @@ void main() {
       logger: BufferLogger.test(),
       processManager: FakeProcessManager.any(),
       fileSystem: MemoryFileSystem.test(),
-    ).devices, <Device>[]);
+    ).devices(), <Device>[]);
   });
 
   testWithoutContext('WindowsDevices lists a devices if the workflow is supported', () async {
@@ -61,14 +61,13 @@ void main() {
       logger: BufferLogger.test(),
       processManager: FakeProcessManager.any(),
       fileSystem: MemoryFileSystem.test(),
-    ).devices, hasLength(1));
+    ).devices(), hasLength(1));
   });
 
   testWithoutContext('isSupportedForProject is true with editable host app', () async {
     final FileSystem fileSystem = MemoryFileSystem.test();
     final WindowsDevice windowsDevice = setUpWindowsDevice(fileSystem: fileSystem);
     fileSystem.file('pubspec.yaml').createSync();
-    fileSystem.file('.packages').createSync();
     fileSystem.directory('windows').createSync();
     fileSystem.file(fileSystem.path.join('windows', 'CMakeLists.txt')).createSync();
     final FlutterProject flutterProject = setUpFlutterProject(fileSystem.currentDirectory);
@@ -80,7 +79,6 @@ void main() {
     final FileSystem fileSystem = MemoryFileSystem.test();
     final WindowsDevice windowsDevice = setUpWindowsDevice(fileSystem: fileSystem);
     fileSystem.file('pubspec.yaml').createSync();
-    fileSystem.file('.packages').createSync();
     final FlutterProject flutterProject = setUpFlutterProject(fileSystem.currentDirectory);
 
     expect(windowsDevice.isSupportedForProject(flutterProject), false);
@@ -90,7 +88,6 @@ void main() {
     final FileSystem fileSystem = MemoryFileSystem.test();
     final WindowsDevice windowsDevice = setUpWindowsDevice(fileSystem: fileSystem);
     fileSystem.file('pubspec.yaml').createSync();
-    fileSystem.file('.packages').createSync();
     fileSystem.directory('windows').createSync();
     final FlutterProject flutterProject = setUpFlutterProject(fileSystem.currentDirectory);
 
@@ -101,9 +98,9 @@ void main() {
     final WindowsDevice windowsDevice = setUpWindowsDevice();
     final FakeWindowsApp fakeApp = FakeWindowsApp();
 
-    expect(windowsDevice.executablePathForDevice(fakeApp, BuildMode.debug), 'debug/executable');
-    expect(windowsDevice.executablePathForDevice(fakeApp, BuildMode.profile), 'profile/executable');
-    expect(windowsDevice.executablePathForDevice(fakeApp, BuildMode.release), 'release/executable');
+    expect(windowsDevice.executablePathForDevice(fakeApp, BuildInfo.debug), 'debug/executable');
+    expect(windowsDevice.executablePathForDevice(fakeApp, BuildInfo.profile), 'profile/executable');
+    expect(windowsDevice.executablePathForDevice(fakeApp, BuildInfo.release), 'release/executable');
   });
 }
 
@@ -130,5 +127,5 @@ WindowsDevice setUpWindowsDevice({
 
 class FakeWindowsApp extends Fake implements WindowsApp {
   @override
-  String executable(BuildMode buildMode) => '${buildMode.name}/executable';
+  String executable(BuildMode buildMode, TargetPlatform targetPlatform) => '${buildMode.cliName}/executable';
 }

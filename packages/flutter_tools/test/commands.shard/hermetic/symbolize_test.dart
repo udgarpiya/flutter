@@ -39,14 +39,14 @@ void main() {
 
     unawaited(symbolizationService.decode(
       input: Stream<Uint8List>.fromIterable(<Uint8List>[
-        utf8.encode('Hello, World\n') as Uint8List,
+        const Utf8Encoder().convert('Hello, World\n'),
       ]),
       symbols: Uint8List(0),
       output: IOSink(output.sink),
     ));
 
     await expectLater(
-      output.stream.transform(utf8.decoder),
+      output.stream.transform(utf8.decoder).transform(const LineSplitter()),
       emits('Hello, World'),
     );
   });

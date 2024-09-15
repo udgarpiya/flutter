@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// @docImport 'editable_text.dart';
+/// @docImport 'scroll_view.dart';
+/// @docImport 'table.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show clampDouble;
@@ -44,10 +49,8 @@ typedef InteractiveViewerWidgetBuilder = Widget Function(BuildContext context, Q
 /// don't set [clipBehavior] or be sure that the InteractiveViewer widget is the
 /// size of the area that should be interactive.
 ///
-/// The [child] must not be null.
-///
 /// See also:
-///   * The [Flutter Gallery's transformations demo](https://github.com/flutter/gallery/blob/master/lib/demos/reference/transformations_demo.dart),
+///   * The [Flutter Gallery's transformations demo](https://github.com/flutter/gallery/blob/main/lib/demos/reference/transformations_demo.dart),
 ///     which includes the use of InteractiveViewer.
 ///   * The [flutter-go demo](https://github.com/justinmc/flutter-go), which includes robust positioning of an InteractiveViewer child
 ///     that works for all screen sizes and child sizes.
@@ -62,38 +65,33 @@ typedef InteractiveViewerWidgetBuilder = Widget Function(BuildContext context, Q
 @immutable
 class InteractiveViewer extends StatefulWidget {
   /// Create an InteractiveViewer.
-  ///
-  /// The [child] parameter must not be null.
   InteractiveViewer({
     super.key,
     this.clipBehavior = Clip.hardEdge,
-    this.alignPanAxis = false,
+    this.panAxis = PanAxis.free,
     this.boundaryMargin = EdgeInsets.zero,
     this.constrained = true,
     // These default scale values were eyeballed as reasonable limits for common
     // use cases.
     this.maxScale = 2.5,
     this.minScale = 0.8,
+    this.interactionEndFrictionCoefficient = _kDrag,
     this.onInteractionEnd,
     this.onInteractionStart,
     this.onInteractionUpdate,
     this.panEnabled = true,
     this.scaleEnabled = true,
-    this.scaleFactor = 200.0,
+    this.scaleFactor = kDefaultMouseScrollToScaleFactor,
     this.transformationController,
+    this.alignment,
+    this.trackpadScrollCausesScale = false,
     required Widget this.child,
-  }) : assert(alignPanAxis != null),
-       assert(child != null),
-       assert(constrained != null),
-       assert(minScale != null),
-       assert(minScale > 0),
+  }) : assert(minScale > 0),
+       assert(interactionEndFrictionCoefficient > 0),
        assert(minScale.isFinite),
-       assert(maxScale != null),
        assert(maxScale > 0),
        assert(!maxScale.isNaN),
        assert(maxScale >= minScale),
-       assert(panEnabled != null),
-       assert(scaleEnabled != null),
        // boundaryMargin must be either fully infinite or fully finite, but not
        // a mix of both.
        assert(
@@ -109,17 +107,18 @@ class InteractiveViewer extends StatefulWidget {
   /// Can be used to render a child that changes in response to the current
   /// transformation.
   ///
-  /// The [builder] parameter must not be null. See its docs for an example of
-  /// using it to optimize a large child.
+  /// See the [builder] attribute docs for an example of using it to optimize a
+  /// large child.
   InteractiveViewer.builder({
     super.key,
     this.clipBehavior = Clip.hardEdge,
-    this.alignPanAxis = false,
+    this.panAxis = PanAxis.free,
     this.boundaryMargin = EdgeInsets.zero,
     // These default scale values were eyeballed as reasonable limits for common
     // use cases.
     this.maxScale = 2.5,
     this.minScale = 0.8,
+    this.interactionEndFrictionCoefficient = _kDrag,
     this.onInteractionEnd,
     this.onInteractionStart,
     this.onInteractionUpdate,
@@ -127,18 +126,15 @@ class InteractiveViewer extends StatefulWidget {
     this.scaleEnabled = true,
     this.scaleFactor = 200.0,
     this.transformationController,
+    this.alignment,
+    this.trackpadScrollCausesScale = false,
     required InteractiveViewerWidgetBuilder this.builder,
-  }) : assert(alignPanAxis != null),
-       assert(builder != null),
-       assert(minScale != null),
-       assert(minScale > 0),
+  }) : assert(minScale > 0),
+       assert(interactionEndFrictionCoefficient > 0),
        assert(minScale.isFinite),
-       assert(maxScale != null),
        assert(maxScale > 0),
        assert(!maxScale.isNaN),
        assert(maxScale >= minScale),
-       assert(panEnabled != null),
-       assert(scaleEnabled != null),
        // boundaryMargin must be either fully infinite or fully finite, but not
        // a mix of both.
        assert(
@@ -151,6 +147,9 @@ class InteractiveViewer extends StatefulWidget {
        constrained = false,
        child = null;
 
+  /// The alignment of the child's origin, relative to the size of the box.
+  final Alignment? alignment;
+
   /// If set to [Clip.none], the child may extend beyond the size of the InteractiveViewer,
   /// but it will not receive gestures in these areas.
   /// Be sure that the InteractiveViewer is the desired size when using [Clip.none].
@@ -158,18 +157,18 @@ class InteractiveViewer extends StatefulWidget {
   /// Defaults to [Clip.hardEdge].
   final Clip clipBehavior;
 
-  /// If true, panning is only allowed in the direction of the horizontal axis
-  /// or the vertical axis.
+  /// When set to [PanAxis.aligned], panning is only allowed in the horizontal
+  /// axis or the vertical axis, diagonal panning is not allowed.
   ///
-  /// In other words, when this is true, diagonal panning is not allowed. A
-  /// single gesture begun along one axis cannot also cause panning along the
-  /// other axis without stopping and beginning a new gesture. This is a common
-  /// pattern in tables where data is displayed in columns and rows.
+  /// When set to [PanAxis.vertical] or [PanAxis.horizontal] panning is only
+  /// allowed in the specified axis. For example, if set to [PanAxis.vertical],
+  /// panning will only be allowed in the vertical axis. And if set to [PanAxis.horizontal],
+  /// panning will only be allowed in the horizontal axis.
   ///
-  /// See also:
-  ///  * [constrained], which has an example of creating a table that uses
-  ///    alignPanAxis.
-  final bool alignPanAxis;
+  /// When set to [PanAxis.free] panning is allowed in all directions.
+  ///
+  /// Defaults to [PanAxis.free].
+  final PanAxis panAxis;
 
   /// A margin for the visible boundaries of the child.
   ///
@@ -256,10 +255,12 @@ class InteractiveViewer extends StatefulWidget {
   ///   * [panEnabled], which is similar but for panning.
   final bool scaleEnabled;
 
+  /// {@macro flutter.gestures.scale.trackpadScrollCausesScale}
+  final bool trackpadScrollCausesScale;
+
   /// Determines the amount of scale to be performed per pointer scroll.
   ///
-  /// Defaults to 200.0, which was arbitrarily chosen to feel natural for most
-  /// trackpads and mousewheels on all supported platforms.
+  /// Defaults to [kDefaultMouseScrollToScaleFactor].
   ///
   /// Increasing this value above the default causes scaling to feel slower,
   /// while decreasing it causes scaling to feel faster.
@@ -278,7 +279,7 @@ class InteractiveViewer extends StatefulWidget {
   ///
   /// Defaults to 2.5.
   ///
-  /// Cannot be null, and must be greater than zero and greater than minScale.
+  /// Must be greater than zero and greater than [minScale].
   final double maxScale;
 
   /// The minimum allowed scale.
@@ -292,9 +293,15 @@ class InteractiveViewer extends StatefulWidget {
   ///
   /// Defaults to 0.8.
   ///
-  /// Cannot be null, and must be a finite number greater than zero and less
-  /// than maxScale.
+  /// Must be a finite number greater than zero and less than [maxScale].
   final double minScale;
+
+  /// Changes the deceleration behavior after a gesture.
+  ///
+  /// Defaults to 0.0000135.
+  ///
+  /// Must be a finite number greater than zero.
+  final double interactionEndFrictionCoefficient;
 
   /// Called when the user ends a pan or scale gesture on the widget.
   ///
@@ -377,6 +384,10 @@ class InteractiveViewer extends StatefulWidget {
   ///  * [ValueNotifier], the parent class of TransformationController.
   ///  * [TextEditingController] for an example of another similar pattern.
   final TransformationController? transformationController;
+
+  // Used as the coefficient of friction in the inertial translation animation.
+  // This value was eyeballed to give a feel similar to Google Photos.
+  static const double _kDrag = 0.0000135;
 
   /// Returns the closest point to the given point on the given line segment.
   @visibleForTesting
@@ -501,13 +512,17 @@ class InteractiveViewer extends StatefulWidget {
 }
 
 class _InteractiveViewerState extends State<InteractiveViewer> with TickerProviderStateMixin {
-  TransformationController? _transformationController;
+  late TransformationController _transformer = widget.transformationController
+      ?? TransformationController();
 
   final GlobalKey _childKey = GlobalKey();
   final GlobalKey _parentKey = GlobalKey();
   Animation<Offset>? _animation;
+  Animation<double>? _scaleAnimation;
+  late Offset _scaleAnimationFocalPoint;
   late AnimationController _controller;
-  Axis? _panAxis; // Used with alignPanAxis.
+  late AnimationController _scaleController;
+  Axis? _currentAxis; // Used with panAxis.
   Offset? _referenceFocalPoint; // Point where the current gesture began.
   double? _scaleStart; // Scale value at start of scaling gesture.
   double? _rotationStart = 0.0; // Rotation at start of rotation gesture.
@@ -518,10 +533,6 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
   // hardcoded value when the rotation feature is implemented.
   // https://github.com/flutter/flutter/issues/57698
   final bool _rotateEnabled = false;
-
-  // Used as the coefficient of friction in the inertial translation animation.
-  // This value was eyeballed to give a feel similar to Google Photos.
-  static const double _kDrag = 0.0000135;
 
   // The _boundaryRect is calculated by adding the boundaryMargin to the size of
   // the child.
@@ -566,9 +577,18 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
       return matrix.clone();
     }
 
-    final Offset alignedTranslation = widget.alignPanAxis && _panAxis != null
-      ? _alignAxis(translation, _panAxis!)
-      : translation;
+    final Offset alignedTranslation;
+
+    if (_currentAxis != null) {
+      alignedTranslation = switch (widget.panAxis){
+        PanAxis.horizontal => _alignAxis(translation, Axis.horizontal),
+        PanAxis.vertical   => _alignAxis(translation, Axis.vertical),
+        PanAxis.aligned    => _alignAxis(translation, _currentAxis!),
+        PanAxis.free       => translation,
+      };
+    } else {
+      alignedTranslation = translation;
+    }
 
     final Matrix4 nextMatrix = matrix.clone()..translate(
       alignedTranslation.dx,
@@ -656,7 +676,7 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
 
     // Don't allow a scale that results in an overall scale beyond min/max
     // scale.
-    final double currentScale = _transformationController!.value.getMaxScaleOnAxis();
+    final double currentScale = _transformer.value.getMaxScaleOnAxis();
     final double totalScale = math.max(
       currentScale * scale,
       // Ensure that the scale cannot make the child so big that it can't fit
@@ -680,11 +700,8 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
     if (rotation == 0) {
       return matrix.clone();
     }
-    final Offset focalPointScene = _transformationController!.toScene(
-      focalPoint,
-    );
-    return matrix
-      .clone()
+    final Offset focalPointScene = _transformer.toScene(focalPoint);
+    return matrix.clone()
       ..translate(focalPointScene.dx, focalPointScene.dy)
       ..rotateZ(-rotation)
       ..translate(-focalPointScene.dx, -focalPointScene.dy);
@@ -692,17 +709,11 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
 
   // Returns true iff the given _GestureType is enabled.
   bool _gestureIsSupported(_GestureType? gestureType) {
-    switch (gestureType) {
-      case _GestureType.rotate:
-        return _rotateEnabled;
-
-      case _GestureType.scale:
-        return widget.scaleEnabled;
-
-      case _GestureType.pan:
-      case null:
-        return widget.panEnabled;
-    }
+    return switch (gestureType) {
+      _GestureType.rotate => _rotateEnabled,
+      _GestureType.scale => widget.scaleEnabled,
+      _GestureType.pan || null => widget.panEnabled,
+    };
   }
 
   // Decide which type of gesture this is by comparing the amount of scale
@@ -729,24 +740,29 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
     if (_controller.isAnimating) {
       _controller.stop();
       _controller.reset();
-      _animation?.removeListener(_onAnimate);
+      _animation?.removeListener(_handleInertiaAnimation);
       _animation = null;
+    }
+    if (_scaleController.isAnimating) {
+      _scaleController.stop();
+      _scaleController.reset();
+      _scaleAnimation?.removeListener(_handleScaleAnimation);
+      _scaleAnimation = null;
     }
 
     _gestureType = null;
-    _panAxis = null;
-    _scaleStart = _transformationController!.value.getMaxScaleOnAxis();
-    _referenceFocalPoint = _transformationController!.toScene(
-      details.localFocalPoint,
-    );
+    _currentAxis = null;
+    _scaleStart = _transformer.value.getMaxScaleOnAxis();
+    _referenceFocalPoint = _transformer.toScene(details.localFocalPoint);
     _rotationStart = _currentRotation;
   }
 
   // Handle an update to an ongoing gesture. All of pan, scale, and rotate are
   // handled with GestureDetector's scale gesture.
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    final double scale = _transformationController!.value.getMaxScaleOnAxis();
-    final Offset focalPointScene = _transformationController!.toScene(
+    final double scale = _transformer.value.getMaxScaleOnAxis();
+    _scaleAnimationFocalPoint = details.localFocalPoint;
+    final Offset focalPointScene = _transformer.toScene(
       details.localFocalPoint,
     );
 
@@ -772,20 +788,17 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
         // previous call to _onScaleUpdate.
         final double desiredScale = _scaleStart! * details.scale;
         final double scaleChange = desiredScale / scale;
-        _transformationController!.value = _matrixScale(
-          _transformationController!.value,
-          scaleChange,
-        );
+        _transformer.value = _matrixScale(_transformer.value, scaleChange);
 
         // While scaling, translate such that the user's two fingers stay on
         // the same places in the scene. That means that the focal point of
         // the scale should be on the same place in the scene before and after
         // the scale.
-        final Offset focalPointSceneScaled = _transformationController!.toScene(
+        final Offset focalPointSceneScaled = _transformer.toScene(
           details.localFocalPoint,
         );
-        _transformationController!.value = _matrixTranslate(
-          _transformationController!.value,
+        _transformer.value = _matrixTranslate(
+          _transformer.value,
           focalPointSceneScaled - _referenceFocalPoint!,
         );
 
@@ -794,13 +807,12 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
         // the translate came in contact with a boundary. In that case, update
         // _referenceFocalPoint so subsequent updates happen in relation to
         // the new effective focal point.
-        final Offset focalPointSceneCheck = _transformationController!.toScene(
+        final Offset focalPointSceneCheck = _transformer.toScene(
           details.localFocalPoint,
         );
         if (_round(_referenceFocalPoint!) != _round(focalPointSceneCheck)) {
           _referenceFocalPoint = focalPointSceneCheck;
         }
-        break;
 
       case _GestureType.rotate:
         if (details.rotation == 0.0) {
@@ -808,13 +820,12 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
           return;
         }
         final double desiredRotation = _rotationStart! + details.rotation;
-        _transformationController!.value = _matrixRotate(
-          _transformationController!.value,
+        _transformer.value = _matrixRotate(
+          _transformer.value,
           _currentRotation - desiredRotation,
           details.localFocalPoint,
         );
         _currentRotation = desiredRotation;
-        break;
 
       case _GestureType.pan:
         assert(_referenceFocalPoint != null);
@@ -825,18 +836,15 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
           widget.onInteractionUpdate?.call(details);
           return;
         }
-        _panAxis ??= _getPanAxis(_referenceFocalPoint!, focalPointScene);
+        _currentAxis ??= _getPanAxis(_referenceFocalPoint!, focalPointScene);
         // Translate so that the same point in the scene is underneath the
         // focal point before and after the movement.
         final Offset translationChange = focalPointScene - _referenceFocalPoint!;
-        _transformationController!.value = _matrixTranslate(
-          _transformationController!.value,
+        _transformer.value = _matrixTranslate(
+          _transformer.value,
           translationChange,
         );
-        _referenceFocalPoint = _transformationController!.toScene(
-          details.localFocalPoint,
-        );
-        break;
+        _referenceFocalPoint = _transformer.toScene(details.localFocalPoint);
     }
     widget.onInteractionUpdate?.call(details);
   }
@@ -849,127 +857,212 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
     _rotationStart = null;
     _referenceFocalPoint = null;
 
-    _animation?.removeListener(_onAnimate);
+    _animation?.removeListener(_handleInertiaAnimation);
+    _scaleAnimation?.removeListener(_handleScaleAnimation);
     _controller.reset();
+    _scaleController.reset();
 
     if (!_gestureIsSupported(_gestureType)) {
-      _panAxis = null;
+      _currentAxis = null;
       return;
     }
 
-    // If the scale ended with enough velocity, animate inertial movement.
-    if (_gestureType != _GestureType.pan || details.velocity.pixelsPerSecond.distance < kMinFlingVelocity) {
-      _panAxis = null;
-      return;
+    switch (_gestureType) {
+      case _GestureType.pan:
+        if (details.velocity.pixelsPerSecond.distance < kMinFlingVelocity) {
+          _currentAxis = null;
+          return;
+        }
+        final Vector3 translationVector = _transformer.value.getTranslation();
+        final Offset translation = Offset(translationVector.x, translationVector.y);
+        final FrictionSimulation frictionSimulationX = FrictionSimulation(
+          widget.interactionEndFrictionCoefficient,
+          translation.dx,
+          details.velocity.pixelsPerSecond.dx,
+        );
+        final FrictionSimulation frictionSimulationY = FrictionSimulation(
+          widget.interactionEndFrictionCoefficient,
+          translation.dy,
+          details.velocity.pixelsPerSecond.dy,
+        );
+        final double tFinal = _getFinalTime(
+          details.velocity.pixelsPerSecond.distance,
+          widget.interactionEndFrictionCoefficient,
+        );
+        _animation = Tween<Offset>(
+          begin: translation,
+          end: Offset(frictionSimulationX.finalX, frictionSimulationY.finalX),
+        ).animate(CurvedAnimation(
+          parent: _controller,
+          curve: Curves.decelerate,
+        ));
+        _controller.duration = Duration(milliseconds: (tFinal * 1000).round());
+        _animation!.addListener(_handleInertiaAnimation);
+        _controller.forward();
+      case _GestureType.scale:
+        if (details.scaleVelocity.abs() < 0.1) {
+          _currentAxis = null;
+          return;
+        }
+        final double scale = _transformer.value.getMaxScaleOnAxis();
+        final FrictionSimulation frictionSimulation = FrictionSimulation(
+          widget.interactionEndFrictionCoefficient * widget.scaleFactor,
+          scale,
+          details.scaleVelocity / 10
+        );
+        final double tFinal = _getFinalTime(details.scaleVelocity.abs(), widget.interactionEndFrictionCoefficient, effectivelyMotionless: 0.1);
+        _scaleAnimation = Tween<double>(
+          begin: scale,
+          end: frictionSimulation.x(tFinal)
+        ).animate(CurvedAnimation(
+          parent: _scaleController,
+          curve: Curves.decelerate
+        ));
+        _scaleController.duration = Duration(milliseconds: (tFinal * 1000).round());
+        _scaleAnimation!.addListener(_handleScaleAnimation);
+        _scaleController.forward();
+      case _GestureType.rotate || null:
+        break;
     }
-
-    final Vector3 translationVector = _transformationController!.value.getTranslation();
-    final Offset translation = Offset(translationVector.x, translationVector.y);
-    final FrictionSimulation frictionSimulationX = FrictionSimulation(
-      _kDrag,
-      translation.dx,
-      details.velocity.pixelsPerSecond.dx,
-    );
-    final FrictionSimulation frictionSimulationY = FrictionSimulation(
-      _kDrag,
-      translation.dy,
-      details.velocity.pixelsPerSecond.dy,
-    );
-    final double tFinal = _getFinalTime(
-      details.velocity.pixelsPerSecond.distance,
-      _kDrag,
-    );
-    _animation = Tween<Offset>(
-      begin: translation,
-      end: Offset(frictionSimulationX.finalX, frictionSimulationY.finalX),
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.decelerate,
-    ));
-    _controller.duration = Duration(milliseconds: (tFinal * 1000).round());
-    _animation!.addListener(_onAnimate);
-    _controller.forward();
   }
 
-  // Handle mousewheel scroll events.
+  // Handle mousewheel and web trackpad scroll events.
   void _receivedPointerSignal(PointerSignalEvent event) {
+    final Offset local = event.localPosition;
+    final Offset global = event.position;
+    final double scaleChange;
     if (event is PointerScrollEvent) {
-      // Ignore left and right scroll.
-      if (event.scrollDelta.dy == 0.0) {
-        return;
-      }
-      widget.onInteractionStart?.call(
-        ScaleStartDetails(
-          focalPoint: event.position,
-          localFocalPoint: event.localPosition,
-        ),
-      );
-      final double scaleChange = math.exp(-event.scrollDelta.dy / widget.scaleFactor);
+      if (event.kind == PointerDeviceKind.trackpad && !widget.trackpadScrollCausesScale) {
+        // Trackpad scroll, so treat it as a pan.
+        widget.onInteractionStart?.call(
+          ScaleStartDetails(focalPoint: global, localFocalPoint: local),
+        );
 
-      if (!_gestureIsSupported(_GestureType.scale)) {
+        final Offset localDelta = PointerEvent.transformDeltaViaPositions(
+          untransformedEndPosition: global + event.scrollDelta,
+          untransformedDelta: event.scrollDelta,
+          transform: event.transform,
+        );
+
+        if (!_gestureIsSupported(_GestureType.pan)) {
+          widget.onInteractionUpdate?.call(ScaleUpdateDetails(
+            focalPoint: global - event.scrollDelta,
+            localFocalPoint: local - event.scrollDelta,
+            focalPointDelta: -localDelta,
+          ));
+          widget.onInteractionEnd?.call(ScaleEndDetails());
+          return;
+        }
+
+        final Offset focalPointScene = _transformer.toScene(local);
+        final Offset newFocalPointScene = _transformer.toScene(
+          local - localDelta,
+        );
+
+        _transformer.value = _matrixTranslate(
+          _transformer.value,
+          newFocalPointScene - focalPointScene,
+        );
+
         widget.onInteractionUpdate?.call(ScaleUpdateDetails(
-          focalPoint: event.position,
-          localFocalPoint: event.localPosition,
-          scale: scaleChange,
+          focalPoint: global - event.scrollDelta,
+          localFocalPoint: local - localDelta,
+          focalPointDelta: -localDelta,
         ));
         widget.onInteractionEnd?.call(ScaleEndDetails());
         return;
       }
+      // Ignore left and right mouse wheel scroll.
+      if (event.scrollDelta.dy == 0.0) {
+        return;
+      }
+      scaleChange = math.exp(-event.scrollDelta.dy / widget.scaleFactor);
+    }
+    else if (event is PointerScaleEvent) {
+      scaleChange = event.scale;
+    }
+    else {
+      return;
+    }
+    widget.onInteractionStart?.call(
+      ScaleStartDetails(focalPoint: global, localFocalPoint: local),
+    );
 
-      final Offset focalPointScene = _transformationController!.toScene(
-        event.localPosition,
-      );
-
-      _transformationController!.value = _matrixScale(
-        _transformationController!.value,
-        scaleChange,
-      );
-
-      // After scaling, translate such that the event's position is at the
-      // same scene point before and after the scale.
-      final Offset focalPointSceneScaled = _transformationController!.toScene(
-        event.localPosition,
-      );
-      _transformationController!.value = _matrixTranslate(
-        _transformationController!.value,
-        focalPointSceneScaled - focalPointScene,
-      );
-
+    if (!_gestureIsSupported(_GestureType.scale)) {
       widget.onInteractionUpdate?.call(ScaleUpdateDetails(
-        focalPoint: event.position,
-        localFocalPoint: event.localPosition,
+        focalPoint: global,
+        localFocalPoint: local,
         scale: scaleChange,
       ));
       widget.onInteractionEnd?.call(ScaleEndDetails());
+      return;
     }
+
+    final Offset focalPointScene = _transformer.toScene(local);
+    _transformer.value = _matrixScale(_transformer.value, scaleChange);
+
+    // After scaling, translate such that the event's position is at the
+    // same scene point before and after the scale.
+    final Offset focalPointSceneScaled = _transformer.toScene(local);
+    _transformer.value = _matrixTranslate(
+      _transformer.value,
+      focalPointSceneScaled - focalPointScene,
+    );
+
+    widget.onInteractionUpdate?.call(ScaleUpdateDetails(
+      focalPoint: global,
+      localFocalPoint: local,
+      scale: scaleChange,
+    ));
+    widget.onInteractionEnd?.call(ScaleEndDetails());
   }
 
-  // Handle inertia drag animation.
-  void _onAnimate() {
+  void _handleInertiaAnimation() {
     if (!_controller.isAnimating) {
-      _panAxis = null;
-      _animation?.removeListener(_onAnimate);
+      _currentAxis = null;
+      _animation?.removeListener(_handleInertiaAnimation);
       _animation = null;
       _controller.reset();
       return;
     }
     // Translate such that the resulting translation is _animation.value.
-    final Vector3 translationVector = _transformationController!.value.getTranslation();
+    final Vector3 translationVector = _transformer.value.getTranslation();
     final Offset translation = Offset(translationVector.x, translationVector.y);
-    final Offset translationScene = _transformationController!.toScene(
-      translation,
-    );
-    final Offset animationScene = _transformationController!.toScene(
-      _animation!.value,
-    );
-    final Offset translationChangeScene = animationScene - translationScene;
-    _transformationController!.value = _matrixTranslate(
-      _transformationController!.value,
-      translationChangeScene,
+    _transformer.value = _matrixTranslate(
+      _transformer.value,
+      _transformer.toScene(_animation!.value) - _transformer.toScene(translation),
     );
   }
 
-  void _onTransformationControllerChange() {
+  void _handleScaleAnimation() {
+    if (!_scaleController.isAnimating) {
+      _currentAxis = null;
+      _scaleAnimation?.removeListener(_handleScaleAnimation);
+      _scaleAnimation = null;
+      _scaleController.reset();
+      return;
+    }
+    final double desiredScale = _scaleAnimation!.value;
+    final double scaleChange = desiredScale / _transformer.value.getMaxScaleOnAxis();
+    final Offset referenceFocalPoint = _transformer.toScene(
+      _scaleAnimationFocalPoint,
+    );
+    _transformer.value = _matrixScale(_transformer.value, scaleChange);
+
+    // While scaling, translate such that the user's two fingers stay on
+    // the same places in the scene. That means that the focal point of
+    // the scale should be on the same place in the scene before and after
+    // the scale.
+    final Offset focalPointSceneScaled = _transformer.toScene(
+      _scaleAnimationFocalPoint,
+    );
+    _transformer.value = _matrixTranslate(
+      _transformer.value,
+      focalPointSceneScaled - referenceFocalPoint,
+    );
+  }
+
+  void _handleTransformation() {
     // A change to the TransformationController's value is a change to the
     // state.
     setState(() {});
@@ -978,46 +1071,35 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(vsync: this);
+    _scaleController = AnimationController(vsync: this);
 
-    _transformationController = widget.transformationController
-        ?? TransformationController();
-    _transformationController!.addListener(_onTransformationControllerChange);
-    _controller = AnimationController(
-      vsync: this,
-    );
+    _transformer.addListener(_handleTransformation);
   }
 
   @override
   void didUpdateWidget(InteractiveViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Handle all cases of needing to dispose and initialize
-    // transformationControllers.
-    if (oldWidget.transformationController == null) {
-      if (widget.transformationController != null) {
-        _transformationController!.removeListener(_onTransformationControllerChange);
-        _transformationController!.dispose();
-        _transformationController = widget.transformationController;
-        _transformationController!.addListener(_onTransformationControllerChange);
-      }
-    } else {
-      if (widget.transformationController == null) {
-        _transformationController!.removeListener(_onTransformationControllerChange);
-        _transformationController = TransformationController();
-        _transformationController!.addListener(_onTransformationControllerChange);
-      } else if (widget.transformationController != oldWidget.transformationController) {
-        _transformationController!.removeListener(_onTransformationControllerChange);
-        _transformationController = widget.transformationController;
-        _transformationController!.addListener(_onTransformationControllerChange);
-      }
+
+    final TransformationController? newController = widget.transformationController;
+    if (newController == oldWidget.transformationController) {
+      return;
     }
+    _transformer.removeListener(_handleTransformation);
+    if (oldWidget.transformationController == null) {
+      _transformer.dispose();
+    }
+    _transformer = newController ?? TransformationController();
+    _transformer.addListener(_handleTransformation);
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _transformationController!.removeListener(_onTransformationControllerChange);
+    _scaleController.dispose();
+    _transformer.removeListener(_handleTransformation);
     if (widget.transformationController == null) {
-      _transformationController!.dispose();
+      _transformer.dispose();
     }
     super.dispose();
   }
@@ -1030,7 +1112,8 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
         childKey: _childKey,
         clipBehavior: widget.clipBehavior,
         constrained: widget.constrained,
-        matrix: _transformationController!.value,
+        matrix: _transformer.value,
+        alignment: widget.alignment,
         child: widget.child!,
       );
     } else {
@@ -1040,11 +1123,12 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
       assert(!widget.constrained);
       child = LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final Matrix4 matrix = _transformationController!.value;
+          final Matrix4 matrix = _transformer.value;
           return _InteractiveViewerBuilt(
             childKey: _childKey,
             clipBehavior: widget.clipBehavior,
             constrained: widget.constrained,
+            alignment: widget.alignment,
             matrix: matrix,
             child: widget.builder!(
               context,
@@ -1063,13 +1147,15 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
         onScaleEnd: _onScaleEnd,
         onScaleStart: _onScaleStart,
         onScaleUpdate: _onScaleUpdate,
+        trackpadScrollCausesScale: widget.trackpadScrollCausesScale,
+        trackpadScrollToScaleFactor: Offset(0, -1/widget.scaleFactor),
         child: child,
       ),
     );
   }
 }
 
-// This widget simply allows us to easily swap in and out the LayoutBuilder in
+// This widget allows us to easily swap in and out the LayoutBuilder in
 // InteractiveViewer's depending on if it's using a builder or a child.
 class _InteractiveViewerBuilt extends StatelessWidget {
   const _InteractiveViewerBuilt({
@@ -1078,6 +1164,7 @@ class _InteractiveViewerBuilt extends StatelessWidget {
     required this.clipBehavior,
     required this.constrained,
     required this.matrix,
+    required this.alignment,
   });
 
   final Widget child;
@@ -1085,11 +1172,13 @@ class _InteractiveViewerBuilt extends StatelessWidget {
   final Clip clipBehavior;
   final bool constrained;
   final Matrix4 matrix;
+  final Alignment? alignment;
 
   @override
   Widget build(BuildContext context) {
     Widget child = Transform(
       transform: matrix,
+      alignment: alignment,
       child: KeyedSubtree(
         key: childKey,
         child: this.child,
@@ -1184,8 +1273,7 @@ enum _GestureType {
 
 // Given a velocity and drag, calculate the time at which motion will come to
 // a stop, within the margin of effectivelyMotionless.
-double _getFinalTime(double velocity, double drag) {
-  const double effectivelyMotionless = 10.0;
+double _getFinalTime(double velocity, double drag, {double effectivelyMotionless = 10}) {
   return math.log(effectivelyMotionless / velocity) / math.log(drag / 100);
 }
 
@@ -1278,12 +1366,10 @@ Offset _round(Offset offset) {
 // Align the given offset to the given axis by allowing movement only in the
 // axis direction.
 Offset _alignAxis(Offset offset, Axis axis) {
-  switch (axis) {
-    case Axis.horizontal:
-      return Offset(offset.dx, 0.0);
-    case Axis.vertical:
-      return Offset(0.0, offset.dy);
-  }
+  return switch (axis) {
+    Axis.horizontal => Offset(offset.dx, 0.0),
+    Axis.vertical   => Offset(0.0, offset.dy),
+  };
 }
 
 // Given two points, return the axis where the distance between the points is
@@ -1295,4 +1381,21 @@ Axis? _getPanAxis(Offset point1, Offset point2) {
   final double x = point2.dx - point1.dx;
   final double y = point2.dy - point1.dy;
   return x.abs() > y.abs() ? Axis.horizontal : Axis.vertical;
+}
+
+/// This enum is used to specify the behavior of the [InteractiveViewer] when
+/// the user drags the viewport.
+enum PanAxis{
+  /// The user can only pan the viewport along the horizontal axis.
+  horizontal,
+
+  /// The user can only pan the viewport along the vertical axis.
+  vertical,
+
+  /// The user can pan the viewport along the horizontal and vertical axes
+  /// but not diagonally.
+  aligned,
+
+  /// The user can pan the viewport freely in any direction.
+  free,
 }

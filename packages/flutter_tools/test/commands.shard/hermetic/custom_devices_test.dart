@@ -20,6 +20,7 @@ import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/commands/custom_devices.dart';
 import 'package:flutter_tools/src/custom_devices/custom_device_config.dart';
 import 'package:flutter_tools/src/custom_devices/custom_devices_config.dart';
+import 'package:flutter_tools/src/features.dart';
 import 'package:flutter_tools/src/runner/flutter_command_runner.dart';
 
 import '../../src/common.dart';
@@ -239,6 +240,14 @@ class FakeTerminal implements Terminal {
   bool get supportsColor => terminal.supportsColor;
 
   @override
+  bool get isCliAnimationEnabled => terminal.isCliAnimationEnabled;
+
+  @override
+  void applyFeatureFlags(FeatureFlags flags) {
+    // ignored
+  }
+
+  @override
   bool get supportsEmoji => terminal.supportsEmoji;
 
   @override
@@ -257,10 +266,7 @@ class FakeCommandRunner extends FlutterCommandRunner {
   }) : _platform = platform,
        _fileSystem = fileSystem,
        _logger = logger,
-       _userMessages = userMessages ?? UserMessages(),
-       assert(platform != null),
-       assert(fileSystem != null),
-       assert(logger != null);
+       _userMessages = userMessages ?? UserMessages();
 
   final Platform _platform;
   final FileSystem _fileSystem;
@@ -544,7 +550,7 @@ void main() {
                 '-w', '1',
                 'testhostname',
               ],
-              postBuildCommand: null, // ignore: avoid_redundant_argument_values
+              postBuildCommand: null,
               installCommand: const <String>[
                 'scp',
                 '-r',
@@ -634,7 +640,7 @@ void main() {
                 '-w', '1',
                 '192.168.178.1',
               ],
-              postBuildCommand: null, // ignore: avoid_redundant_argument_values
+              postBuildCommand: null,
               installCommand: const <String>[
                 'scp',
                 '-r',
@@ -724,7 +730,7 @@ void main() {
                 '-w', '1',
                 '::1',
               ],
-              postBuildCommand: null, // ignore: avoid_redundant_argument_values
+              postBuildCommand: null,
               installCommand: const <String>[
                 'scp',
                 '-r',
@@ -818,7 +824,7 @@ void main() {
                 '-w', '1',
                 'testhostname',
               ],
-              postBuildCommand: null, // ignore: avoid_redundant_argument_values
+              postBuildCommand: null,
               installCommand: <String>[
                 'scp',
                 '-r',
@@ -898,7 +904,7 @@ void main() {
                 '-w', '1',
                 'testhostname',
               ],
-              postBuildCommand: null, // ignore: avoid_redundant_argument_values
+              postBuildCommand: null,
               installCommand: const <String>[
                 'scp',
                 '-r',
@@ -1123,7 +1129,7 @@ void main() {
         expect(
           logger.statusText,
           contains(
-            'Successfully resetted the custom devices config file and created a '
+            'Successfully reset the custom devices config file and created a '
             'backup at "/.flutter_custom_devices.json.bak".'
           )
         );
@@ -1155,7 +1161,7 @@ void main() {
         expect(
           logger.statusText,
           contains(
-            'Successfully resetted the custom devices config file.'
+            'Successfully reset the custom devices config file.'
           )
         );
 
@@ -1223,7 +1229,7 @@ void main() {
                 'testhostname',
               ],
               pingSuccessRegex: RegExp(r'[<=]\d+ms'),
-              postBuildCommand: null, // ignore: avoid_redundant_argument_values
+              postBuildCommand: null,
               installCommand: const <String>[
                 'scp',
                 '-r',

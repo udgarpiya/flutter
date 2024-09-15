@@ -8,11 +8,13 @@ import 'dart:io' as io;
 
 import 'package:conductor_core/conductor_core.dart';
 import 'package:conductor_core/packages_autoroller.dart';
+import 'package:conductor_core/src/validate_checkout_post_gradle_regeneration.dart';
 import 'package:file/memory.dart';
+import 'package:path/path.dart' show Context, Style;
 import 'package:platform/platform.dart';
 
-import './common.dart';
 import '../bin/packages_autoroller.dart' show run;
+import 'common.dart';
 
 void main() {
   const String flutterRoot = '/flutter';
@@ -50,10 +52,7 @@ void main() {
     );
     framework = FrameworkRepository(
       checkouts,
-      mirrorRemote: const Remote(
-        name: RemoteName.mirror,
-        url: mirrorUrl,
-      ),
+      mirrorRemote: const Remote.mirror(mirrorUrl),
     );
 
     autoroller = PackageAutoroller(
@@ -63,6 +62,7 @@ void main() {
       orgName: orgName,
       processManager: processManager,
       stdio: stdio,
+      githubUsername: 'flutter-pub-roller-bot',
     );
   });
 
@@ -169,7 +169,7 @@ void main() {
     await expectLater(
       () async {
         final Future<void> rollFuture = autoroller.roll();
-        await controller.stream.drain();
+        await controller.stream.drain<Object?>();
         await rollFuture;
       },
       throwsA(isA<Exception>().having(
@@ -199,13 +199,13 @@ void main() {
         'pr',
         'list',
         '--author',
-        'fluttergithubbot',
+        'flutter-pub-roller-bot',
         '--repo',
         'flutter/flutter',
         '--state',
         'open',
-        '--label',
-        'tool',
+        '--search',
+        'Roll pub packages',
         '--json',
         'number',
       // Non empty array means there are open PRs by the bot with the tool label
@@ -213,10 +213,10 @@ void main() {
       ], stdout: '[{"number": 123}]'),
     ]);
     final Future<void> rollFuture = autoroller.roll();
-    await controller.stream.drain();
+    await controller.stream.drain<Object?>();
     await rollFuture;
     expect(processManager, hasNoRemainingExpectations);
-    expect(stdio.stdout, contains('fluttergithubbot already has open tool PRs'));
+    expect(stdio.stdout, contains('flutter-pub-roller-bot already has open tool PRs'));
     expect(stdio.stdout, contains(r'[{number: 123}]'));
   });
 
@@ -239,13 +239,13 @@ void main() {
         'pr',
         'list',
         '--author',
-        'fluttergithubbot',
+        'flutter-pub-roller-bot',
         '--repo',
         'flutter/flutter',
         '--state',
         'open',
-        '--label',
-        'tool',
+        '--search',
+        'Roll pub packages',
         '--json',
         'number',
       // Returns empty array, as there are no other open roll PRs from the bot
@@ -295,10 +295,6 @@ void main() {
       ]),
       const FakeCommand(command: <String>[
         '$checkoutsParentDirectory/flutter_conductor_checkouts/framework/bin/flutter',
-        'help',
-      ]),
-      const FakeCommand(command: <String>[
-        '$checkoutsParentDirectory/flutter_conductor_checkouts/framework/bin/flutter',
         '--verbose',
         'update-packages',
         '--force-upgrade',
@@ -311,7 +307,7 @@ void main() {
       ]),
     ]);
     final Future<void> rollFuture = autoroller.roll();
-    await controller.stream.drain();
+    await controller.stream.drain<Object?>();
     await rollFuture;
     expect(processManager, hasNoRemainingExpectations);
   });
@@ -335,13 +331,13 @@ void main() {
         'pr',
         'list',
         '--author',
-        'fluttergithubbot',
+        'flutter-pub-roller-bot',
         '--repo',
         'flutter/flutter',
         '--state',
         'open',
-        '--label',
-        'tool',
+        '--search',
+        'Roll pub packages',
         '--json',
         'number',
       // Returns empty array, as there are no other open roll PRs from the bot
@@ -388,10 +384,6 @@ void main() {
         'checkout',
         '-b',
         'packages-autoroller-branch-1',
-      ]),
-      const FakeCommand(command: <String>[
-        '$checkoutsParentDirectory/flutter_conductor_checkouts/framework/bin/flutter',
-        'help',
       ]),
       const FakeCommand(command: <String>[
         '$checkoutsParentDirectory/flutter_conductor_checkouts/framework/bin/flutter',
@@ -427,13 +419,52 @@ void main() {
         'commit',
         '--message',
         'roll packages',
-        '--author="fluttergithubbot <fluttergithubbot@gmail.com>"',
+        '--author="flutter-pub-roller-bot <flutter-pub-roller-bot@google.com>"',
       ]),
       const FakeCommand(command: <String>[
         'git',
         'rev-parse',
         'HEAD',
       ], stdout: '000deadbeef'),
+      const FakeCommand(command: <String>[
+        '$checkoutsParentDirectory/flutter_conductor_checkouts/framework/bin/dart',
+        '$checkoutsParentDirectory/flutter_conductor_checkouts/framework/dev/tools/bin/generate_gradle_lockfiles.dart',
+        '--no-gradle-generation',
+        '--no-exclusion',
+      ]),
+      const FakeCommand(command: <String>[
+        'git',
+        'status',
+        '--porcelain',
+      ], stdout: '''
+ M dev/integration_tests/ui/android/project-app.lockfile
+ M examples/image_list/android/project-app.lockfile
+'''),
+      const FakeCommand(command: <String>[
+        'git',
+        'status',
+        '--porcelain',
+      ], stdout: '''
+ M dev/integration_tests/ui/android/project-app.lockfile
+ M examples/image_list/android/project-app.lockfile
+'''),
+      const FakeCommand(command: <String>[
+        'git',
+        'add',
+        '--all',
+      ]),
+      const FakeCommand(command: <String>[
+        'git',
+        'commit',
+        '--message',
+        'Re-generate Gradle lockfiles',
+        '--author="flutter-pub-roller-bot <flutter-pub-roller-bot@google.com>"',
+      ]),
+      const FakeCommand(command: <String>[
+        'git',
+        'rev-parse',
+        'HEAD',
+      ], stdout: '234deadbeef'),
       const FakeCommand(command: <String>[
         'git',
         'push',
@@ -475,12 +506,11 @@ void main() {
 
   group('command argument validations', () {
     const String tokenPath = '/path/to/token';
-    const String mirrorRemote = 'https://githost.com/org/project';
 
     test('validates that file exists at --token option', () async {
       await expectLater(
         () => run(
-          <String>['--token', tokenPath, '--mirror-remote', mirrorRemote],
+          <String>['--token', tokenPath],
           fs: fileSystem,
           processManager: processManager,
         ),
@@ -499,7 +529,7 @@ void main() {
         ..writeAsStringSync('');
       await expectLater(
         () => run(
-          <String>['--token', tokenPath, '--mirror-remote', mirrorRemote],
+          <String>['--token', tokenPath],
           fs: fileSystem,
           processManager: processManager,
         ),
@@ -512,4 +542,84 @@ void main() {
       expect(processManager, hasNoRemainingExpectations);
     });
   });
+
+  test('VerboseStdio logger can filter out confidential pattern', () async {
+    const String token = 'secret';
+    const String replacement = 'replacement';
+    final VerboseStdio stdio = VerboseStdio(
+      stdin: _NoOpStdin(),
+      stderr: _NoOpStdout(),
+      stdout: _NoOpStdout(),
+      filter: (String msg) => msg.replaceAll(token, replacement),
+    );
+    stdio.printStatus('Hello');
+    expect(stdio.logs.last, '[status] Hello');
+
+    stdio.printStatus('Using $token');
+    expect(stdio.logs.last, '[status] Using $replacement');
+
+    stdio.printWarning('Using $token');
+    expect(stdio.logs.last, '[warning] Using $replacement');
+
+    stdio.printError('Using $token');
+    expect(stdio.logs.last, '[error] Using $replacement');
+
+    stdio.printTrace('Using $token');
+    expect(stdio.logs.last, '[trace] Using $replacement');
+  });
+
+  group('CheckoutStatePostGradleRegeneration', () {
+    final Context ctx = Context(style: Style.posix);
+
+    test('empty input returns NoDiff', () {
+      expect(
+        CheckoutStatePostGradleRegeneration('', ctx),
+        const NoDiff(),
+      );
+    });
+
+    test('only *.lockfile changes returns OnlyLockfileChanges', () {
+      expect(
+        CheckoutStatePostGradleRegeneration('''
+ A dev/benchmarks/test_apps/stocks/android/buildscript-gradle.lockfile
+ M dev/integration_tests/ui/android/project-app.lockfile
+ M examples/image_list/android/project-app.lockfile
+''', ctx),
+        const OnlyLockfileChanges(),
+      );
+    });
+
+    test('if a *.zip file is added returns NonLockfileChanges', () {
+      const String pathToZip = 'dev/benchmarks/test_apps/stocks/android/very-large-archive.zip';
+      CheckoutStatePostGradleRegeneration result = CheckoutStatePostGradleRegeneration('''
+ A dev/benchmarks/test_apps/stocks/android/buildscript-gradle.lockfile
+ A $pathToZip
+ M dev/integration_tests/ui/android/project-app.lockfile
+ M examples/image_list/android/project-app.lockfile
+''', ctx);
+      expect(result, isA<NonLockfileChanges>());
+      result = result as NonLockfileChanges;
+      expect(result.changes, hasLength(1));
+      expect(result.changes.single, pathToZip);
+    });
+
+    test('if it contains a line not matching the regex returns MalformedLine', () {
+      const String malformedLine = 'New Git Output.';
+      CheckoutStatePostGradleRegeneration result = CheckoutStatePostGradleRegeneration('''
+$malformedLine
+ A dev/benchmarks/test_apps/stocks/android/buildscript-gradle.lockfile
+ M dev/integration_tests/ui/android/project-app.lockfile
+ M examples/image_list/android/project-app.lockfile
+''', ctx);
+      expect(result, isA<MalformedLine>());
+      result = result as MalformedLine;
+      expect(result.line, malformedLine);
+    });
+  });
+}
+
+class _NoOpStdin extends Fake implements io.Stdin {}
+class _NoOpStdout extends Fake implements io.Stdout {
+  @override
+  void writeln([Object? object]) {}
 }

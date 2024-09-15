@@ -32,11 +32,11 @@ void main() {
     });
 
     testUsingContext('returns 0 when Android is connected and ready for an install', () async {
-      final InstallCommand command = InstallCommand();
+      final InstallCommand command = InstallCommand(verboseHelp: false);
       command.applicationPackages = FakeApplicationPackageFactory(FakeAndroidApk());
 
       final FakeAndroidDevice device = FakeAndroidDevice();
-      testDeviceManager.addDevice(device);
+      testDeviceManager.addAttachedDevice(device);
 
       await createTestCommandRunner(command).run(<String>['install']);
     }, overrides: <Type, Generator>{
@@ -46,11 +46,11 @@ void main() {
     });
 
     testUsingContext('returns 1 when targeted device is not Android with --device-user', () async {
-      final InstallCommand command = InstallCommand();
+      final InstallCommand command = InstallCommand(verboseHelp: false);
       command.applicationPackages = FakeApplicationPackageFactory(FakeAndroidApk());
 
       final FakeIOSDevice device = FakeIOSDevice();
-      testDeviceManager.addDevice(device);
+      testDeviceManager.addAttachedDevice(device);
 
       expect(() async => createTestCommandRunner(command).run(<String>['install', '--device-user', '10']),
         throwsToolExit(message: '--device-user is only supported for Android'));
@@ -61,11 +61,11 @@ void main() {
     });
 
     testUsingContext('returns 0 when iOS is connected and ready for an install', () async {
-      final InstallCommand command = InstallCommand();
+      final InstallCommand command = InstallCommand(verboseHelp: false);
       command.applicationPackages = FakeApplicationPackageFactory(FakeIOSApp());
 
       final FakeIOSDevice device = FakeIOSDevice();
-      testDeviceManager.addDevice(device);
+      testDeviceManager.addAttachedDevice(device);
 
       await createTestCommandRunner(command).run(<String>['install']);
     }, overrides: <Type, Generator>{
@@ -75,11 +75,11 @@ void main() {
     });
 
     testUsingContext('fails when prebuilt binary not found', () async {
-      final InstallCommand command = InstallCommand();
+      final InstallCommand command = InstallCommand(verboseHelp: false);
       command.applicationPackages = FakeApplicationPackageFactory(FakeAndroidApk());
 
       final FakeAndroidDevice device = FakeAndroidDevice();
-      testDeviceManager.addDevice(device);
+      testDeviceManager.addAttachedDevice(device);
 
       expect(() async => createTestCommandRunner(command).run(<String>['install', '--use-application-binary', 'bogus']),
           throwsToolExit(message: 'Prebuilt binary bogus does not exist'));
@@ -90,14 +90,32 @@ void main() {
     });
 
     testUsingContext('succeeds using prebuilt binary', () async {
-      final InstallCommand command = InstallCommand();
+      final InstallCommand command = InstallCommand(verboseHelp: false);
       command.applicationPackages = FakeApplicationPackageFactory(FakeAndroidApk());
 
       final FakeAndroidDevice device = FakeAndroidDevice();
-      testDeviceManager.addDevice(device);
+      testDeviceManager.addAttachedDevice(device);
       fileSystem.file('binary').createSync(recursive: true);
 
       await createTestCommandRunner(command).run(<String>['install', '--use-application-binary', 'binary']);
+    }, overrides: <Type, Generator>{
+      Cache: () => Cache.test(processManager: FakeProcessManager.any()),
+      FileSystem: () => fileSystem,
+      ProcessManager: () => FakeProcessManager.any(),
+    });
+
+    testUsingContext('Passes flavor to application package.', () async {
+      const String flavor = 'free';
+      final InstallCommand command = InstallCommand(verboseHelp: false);
+      final FakeApplicationPackageFactory fakeAppFactory = FakeApplicationPackageFactory(FakeIOSApp());
+      command.applicationPackages = fakeAppFactory;
+
+      final FakeIOSDevice device = FakeIOSDevice();
+      testDeviceManager.addAttachedDevice(device);
+
+      await createTestCommandRunner(command).run(<String>['install', '--flavor', flavor]);
+      expect(fakeAppFactory.buildInfo, isNotNull);
+      expect(fakeAppFactory.buildInfo!.flavor, flavor);
     }, overrides: <Type, Generator>{
       Cache: () => Cache.test(processManager: FakeProcessManager.any()),
       FileSystem: () => fileSystem,
@@ -110,25 +128,24 @@ class FakeApplicationPackageFactory extends Fake implements ApplicationPackageFa
   FakeApplicationPackageFactory(this.app);
 
   final ApplicationPackage app;
+  BuildInfo? buildInfo;
 
   @override
   Future<ApplicationPackage> getPackageForPlatform(TargetPlatform platform, {BuildInfo? buildInfo, File? applicationBinary}) async {
+    this.buildInfo = buildInfo;
     return app;
   }
 }
 class FakeIOSApp extends Fake implements IOSApp { }
 class FakeAndroidApk extends Fake implements AndroidApk { }
 
-// Unfortunately Device, despite not being immutable, has an `operator ==`.
-// Until we fix that, we have to also ignore related lints here.
-// ignore: avoid_implementing_value_types
 class FakeIOSDevice extends Fake implements IOSDevice {
   @override
   Future<TargetPlatform> get targetPlatform async => TargetPlatform.ios;
 
   @override
   Future<bool> isAppInstalled(
-    IOSApp app, {
+    ApplicationPackage app, {
     String? userIdentifier,
   }) async => false;
 
@@ -137,18 +154,18 @@ class FakeIOSDevice extends Fake implements IOSDevice {
     IOSApp app, {
     String? userIdentifier,
   }) async => true;
+
+  @override
+  String get name => 'iOS';
 }
 
-// Unfortunately Device, despite not being immutable, has an `operator ==`.
-// Until we fix that, we have to also ignore related lints here.
-// ignore: avoid_implementing_value_types
 class FakeAndroidDevice extends Fake implements AndroidDevice {
   @override
   Future<TargetPlatform> get targetPlatform async => TargetPlatform.android_arm;
 
   @override
   Future<bool> isAppInstalled(
-    AndroidApk app, {
+    ApplicationPackage app, {
     String? userIdentifier,
   }) async => false;
 
@@ -157,4 +174,10 @@ class FakeAndroidDevice extends Fake implements AndroidDevice {
     AndroidApk app, {
     String? userIdentifier,
   }) async => true;
+
+  @override
+  String get name => 'Android';
+
+  @override
+  bool get ephemeral => true;
 }

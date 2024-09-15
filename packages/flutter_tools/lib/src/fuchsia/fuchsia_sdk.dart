@@ -16,7 +16,7 @@ import 'fuchsia_pm.dart';
 
 /// Returns [true] if the current platform supports Fuchsia targets.
 bool isFuchsiaSupportedPlatform(Platform platform) {
-  return platform.isLinux || platform.isMacOS;
+  return false;
 }
 
 /// The Fuchsia SDK shell commands.

@@ -12,9 +12,10 @@ const int _kNumWarmUp = 100;
 class Data {
   Data(this.value);
 
-  Map<String, dynamic> toJson() => <String, dynamic>{ 'value': value };
-
   final int value;
+
+  @override
+  String toString() => 'Data($value)';
 }
 
 List<Data> test(int length) {
@@ -22,7 +23,7 @@ List<Data> test(int length) {
       (int index) => Data(index * index));
 }
 
-Future<void> main() async {
+Future<void> execute() async {
   assert(false, "Don't run benchmarks in debug mode! Use 'flutter run --release'.");
 
   // Warm up lap

@@ -67,7 +67,7 @@ void main() {
       logger: BufferLogger.test(),
       processManager: FakeProcessManager.any(),
       operatingSystemUtils: FakeOperatingSystemUtils(),
-    ).devices, <Device>[]);
+    ).devices(), <Device>[]);
   });
 
   testWithoutContext('LinuxDevice: no devices listed if Linux feature flag disabled', () async {
@@ -78,7 +78,7 @@ void main() {
       logger: BufferLogger.test(),
       processManager: FakeProcessManager.any(),
       operatingSystemUtils: FakeOperatingSystemUtils(),
-    ).devices, <Device>[]);
+    ).devices(), <Device>[]);
   });
 
   testWithoutContext('LinuxDevice: devices', () async {
@@ -89,7 +89,7 @@ void main() {
       logger: BufferLogger.test(),
       processManager: FakeProcessManager.any(),
       operatingSystemUtils: FakeOperatingSystemUtils(),
-    ).devices, hasLength(1));
+    ).devices(), hasLength(1));
   });
 
   testWithoutContext('LinuxDevice has well known id "linux"', () async {
@@ -119,7 +119,6 @@ void main() {
   testWithoutContext('LinuxDevice.isSupportedForProject is true with editable host app', () async {
     final FileSystem fileSystem = MemoryFileSystem.test();
     fileSystem.file('pubspec.yaml').createSync();
-    fileSystem.file('.packages').createSync();
     fileSystem.directory('linux').createSync();
     final FlutterProject flutterProject = setUpFlutterProject(fileSystem.currentDirectory);
 
@@ -134,7 +133,6 @@ void main() {
   testWithoutContext('LinuxDevice.isSupportedForProject is false with no host app', () async {
     final FileSystem fileSystem = MemoryFileSystem.test();
     fileSystem.file('pubspec.yaml').createSync();
-    fileSystem.file('.packages').createSync();
     final FlutterProject flutterProject = setUpFlutterProject(fileSystem.currentDirectory);
 
     expect(LinuxDevice(
@@ -154,9 +152,9 @@ void main() {
       operatingSystemUtils: FakeOperatingSystemUtils(),
     );
 
-    expect(device.executablePathForDevice(mockApp, BuildMode.debug), 'debug/executable');
-    expect(device.executablePathForDevice(mockApp, BuildMode.profile), 'profile/executable');
-    expect(device.executablePathForDevice(mockApp, BuildMode.release), 'release/executable');
+    expect(device.executablePathForDevice(mockApp, BuildInfo.debug), 'debug/executable');
+    expect(device.executablePathForDevice(mockApp, BuildInfo.profile), 'profile/executable');
+    expect(device.executablePathForDevice(mockApp, BuildInfo.release), 'release/executable');
   });
 }
 
@@ -170,18 +168,12 @@ FlutterProject setUpFlutterProject(Directory directory) {
 
 class FakeLinuxApp extends Fake implements LinuxApp {
   @override
-  String executable(BuildMode buildMode) {
-    switch (buildMode) {
-      case BuildMode.debug:
-        return 'debug/executable';
-      case BuildMode.profile:
-        return 'profile/executable';
-      case BuildMode.release:
-        return 'release/executable';
-      default:
-        throw StateError('Invalid mode: $buildMode');
-    }
-  }
+  String executable(BuildMode buildMode) => switch (buildMode) {
+        BuildMode.debug => 'debug/executable',
+        BuildMode.profile => 'profile/executable',
+        BuildMode.release => 'release/executable',
+        _ => throw StateError('Invalid mode: $buildMode'),
+      };
 }
 class FakeOperatingSystemUtils extends Fake implements OperatingSystemUtils {
   FakeOperatingSystemUtils({

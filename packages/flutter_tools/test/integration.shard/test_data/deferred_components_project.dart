@@ -13,7 +13,7 @@ class DeferredComponentsProject extends Project {
   final String pubspec = '''
   name: test
   environment:
-    sdk: ">=2.12.0-0 <3.0.0"
+    sdk: '>=3.2.0-0 <4.0.0'
 
   dependencies:
     flutter:
@@ -107,14 +107,14 @@ class BasicDeferredComponentsConfig extends DeferredComponentsConfig {
   @override
   String get androidBuild => r'''
   buildscript {
-      ext.kotlin_version = '1.3.50'
+      ext.kotlin_version = '1.8.22'
       repositories {
           google()
           mavenCentral()
       }
 
       dependencies {
-          classpath 'com.android.tools.build:gradle:4.1.0'
+          classpath 'com.android.tools.build:gradle:8.1.0'
           classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
       }
   }
@@ -134,7 +134,7 @@ class BasicDeferredComponentsConfig extends DeferredComponentsConfig {
       project.evaluationDependsOn(':app')
   }
 
-  task clean(type: Delete) {
+  tasks.register("clean", Delete) {
       delete rootProject.buildDir
   }
   ''';
@@ -175,8 +175,18 @@ class BasicDeferredComponentsConfig extends DeferredComponentsConfig {
   apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
   android {
-      compileSdkVersion flutter.compileSdkVersion
+      namespace = "com.example.splitaot"
+      compileSdk flutter.compileSdkVersion
       ndkVersion flutter.ndkVersion
+
+      compileOptions {
+          sourceCompatibility = JavaVersion.VERSION_1_8
+          targetCompatibility = JavaVersion.VERSION_1_8
+      }
+
+      kotlinOptions {
+          jvmTarget = JavaVersion.VERSION_1_8
+      }
 
       sourceSets {
           main.java.srcDirs += 'src/main/kotlin'
@@ -232,7 +242,7 @@ class BasicDeferredComponentsConfig extends DeferredComponentsConfig {
 
   @override
   String get androidGradleProperties => '''
-  org.gradle.jvmargs=-Xmx1536M
+  org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError
   android.useAndroidX=true
   android.enableJetifier=true
   android.enableR8=true
@@ -482,8 +492,7 @@ class BasicDeferredComponentsConfig extends DeferredComponentsConfig {
 
   @override
   String get appManifest => r'''
-  <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-      package="com.example.splitaot">
+  <manifest xmlns:android="http://schemas.android.com/apk/res/android">
       <!-- io.flutter.app.FlutterApplication is an android.app.Application that
            calls FlutterMain.startInitialization(this); in its onCreate method.
            In most cases you can leave this as-is, but you if you want to provide
@@ -495,6 +504,7 @@ class BasicDeferredComponentsConfig extends DeferredComponentsConfig {
           android:extractNativeLibs="false">
           <activity
               android:name=".MainActivity"
+              android:exported="true"
               android:launchMode="singleTop"
               android:theme="@style/LaunchTheme"
               android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -507,15 +517,6 @@ class BasicDeferredComponentsConfig extends DeferredComponentsConfig {
               <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme"
-                />
-              <!-- Displays an Android View that continues showing the launch screen
-                   Drawable until Flutter paints its first frame, then this splash
-                   screen fades out. A splash screen is useful to avoid any visual
-                   gap between the end of Android's launch screen and the painting of
-                   Flutter's first frame. -->
-              <meta-data
-                android:name="io.flutter.embedding.android.SplashScreenDrawable"
-                android:resource="@drawable/launch_background"
                 />
               <intent-filter>
                   <action android:name="android.intent.action.MAIN"/>

@@ -3,13 +3,13 @@
 // found in the LICENSE file.
 
 import 'dart:ui' as ui;
-import 'dart:ui' show WindowPadding;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
 import '../painting/image_test_utils.dart' show TestImageProvider;
 
@@ -184,28 +184,8 @@ class MyStatefulWidgetState extends State<MyStatefulWidget> {
   Widget build(BuildContext context) => Text(widget.value);
 }
 
-class FakeWindowPadding implements WindowPadding {
-  const FakeWindowPadding({
-    this.left = 0.0,
-    this.top = 0.0,
-    this.right = 0.0,
-    this.bottom = 0.0,
-  });
-
-  @override
-  final double left;
-  @override
-  final double top;
-  @override
-  final double right;
-  @override
-  final double bottom;
-}
-
-
 Future<void> main() async {
   final ui.Image testImage = await createTestImage();
-  assert(testImage != null);
 
   setUp(() {
     transitionFromUserGestures = false;
@@ -324,9 +304,12 @@ Future<void> main() async {
   testWidgets('Heroes still animate after hero controller is swapped.', (WidgetTester tester) async {
     final GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
     final UniqueKey heroKey = UniqueKey();
+    final HeroController controller1 = HeroController();
+    addTearDown(controller1.dispose);
+
     await tester.pumpWidget(
       HeroControllerScope(
-        controller: HeroController(),
+        controller: controller1,
         child: TestDependencies(
           child: Navigator(
             key: key,
@@ -372,15 +355,19 @@ Future<void> main() async {
         );
       },
     ));
+
     expect(find.byKey(heroKey), findsNothing);
     // Begins the navigation
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 30));
     expect(find.byKey(heroKey), isOnstage);
+    final HeroController controller2 = HeroController();
+    addTearDown(controller2.dispose);
+
     // Pumps a new hero controller.
     await tester.pumpWidget(
       HeroControllerScope(
-        controller: HeroController(),
+        controller: controller2,
         child: TestDependencies(
           child: Navigator(
             key: key,
@@ -409,6 +396,7 @@ Future<void> main() async {
         ),
       ),
     );
+
     // The original animation still flies.
     expect(find.byKey(heroKey), isOnstage);
     // Waits for the animation finishes.
@@ -1203,22 +1191,20 @@ Future<void> main() async {
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.getTopLeft(find.byKey(heroABKey)).dy, 100.0);
 
-    bool isVisible(Element node) {
-      bool visible = true;
-      node.visitAncestorElements((Element ancestor) {
-        final RenderObject r = ancestor.renderObject!;
-        if (r is RenderAnimatedOpacity && r.opacity.value == 0) {
-          visible = false;
+    bool isVisible(RenderObject node) {
+      RenderObject? currentNode = node;
+      while (currentNode != null) {
+        if (currentNode is RenderAnimatedOpacity && currentNode.opacity.value == 0) {
           return false;
         }
-        return true;
-      });
-      return visible;
+        currentNode = currentNode.parent;
+      }
+      return true;
     }
 
     // Of all heroes only one should be visible now.
-    final Iterable<Element> elements = find.text('Hero').evaluate();
-    expect(elements.where(isVisible).length, 1);
+    final Iterable<RenderObject> renderObjects = find.text('Hero').evaluate().map((Element e) => e.renderObject!);
+    expect(renderObjects.where(isVisible).length, 1);
 
     // Hero BC's flight finishes normally.
     await tester.pump(const Duration(milliseconds: 300));
@@ -2361,6 +2347,246 @@ Future<void> main() async {
     expect(tester.getSize(find.byKey(smallContainer)), const Size(100,100));
   });
 
+  testWidgets('Can add two page with heroes simultaneously using page API.', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/issues/115358.
+
+    const String heroTag = 'foo';
+    final GlobalKey<NavigatorState> navigator = GlobalKey();
+    final Key smallContainer = UniqueKey();
+    final Key largeContainer = UniqueKey();
+    final MaterialPage<void> page1 = MaterialPage<void>(
+      child: Center(
+        child: Card(
+          child: Hero(
+            tag: heroTag,
+            child: Container(
+              key: largeContainer,
+              color: Colors.red,
+              height: 200.0,
+              width: 200.0,
+            ),
+          ),
+        ),
+      ),
+    );
+    final MaterialPage<void> page2 = MaterialPage<void>(
+      child: Center(
+        child: Card(
+          child: Hero(
+            tag: heroTag,
+            child: Container(
+              color: Colors.red,
+              height: 1000.0,
+              width: 1000.0,
+            ),
+          ),
+        ),
+      ),
+    );
+    final MaterialPage<void> page3 = MaterialPage<void>(
+      child: Center(
+        child: Card(
+          child: Hero(
+            tag: heroTag,
+            child: Container(
+              key: smallContainer,
+              color: Colors.red,
+              height: 100.0,
+              width: 100.0,
+            ),
+          ),
+        ),
+      ),
+    );
+    final HeroController controller = HeroController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: Navigator(
+          observers: <NavigatorObserver>[controller],
+          pages: <Page<void>>[page1],
+          onPopPage: (_, __) => false,
+        ),
+      )
+    );
+
+    // The initial setup.
+    expect(find.byKey(largeContainer), isOnstage);
+    expect(find.byKey(largeContainer), isInCard);
+    expect(find.byKey(smallContainer, skipOffstage: false), findsNothing);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: Navigator(
+          observers: <NavigatorObserver>[controller],
+          pages: <Page<void>>[page1, page2, page3],
+          onPopPage: (_, __) => false,
+        ),
+      ),
+    );
+
+    expect(find.byKey(largeContainer), isOnstage);
+    expect(find.byKey(largeContainer), isInCard);
+    expect(find.byKey(smallContainer, skipOffstage: false), isOffstage);
+    expect(find.byKey(smallContainer, skipOffstage: false), isInCard);
+
+    await tester.pump();
+
+    // The hero started flying.
+    expect(find.byKey(largeContainer), findsNothing);
+    expect(find.byKey(smallContainer), isOnstage);
+    expect(find.byKey(smallContainer), isNotInCard);
+
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The hero is in-flight.
+    expect(find.byKey(largeContainer), findsNothing);
+    expect(find.byKey(smallContainer), isOnstage);
+    expect(find.byKey(smallContainer), isNotInCard);
+    final Size size = tester.getSize(find.byKey(smallContainer));
+    expect(size.height, greaterThan(100));
+    expect(size.width, greaterThan(100));
+    expect(size.height, lessThan(200));
+    expect(size.width, lessThan(200));
+
+    await tester.pumpAndSettle();
+
+    // The transition has ended.
+    expect(find.byKey(largeContainer), findsNothing);
+    expect(find.byKey(smallContainer), isOnstage);
+    expect(find.byKey(smallContainer), isInCard);
+    expect(tester.getSize(find.byKey(smallContainer)), const Size(100,100));
+  });
+
+  testWidgets('Can still trigger hero even if page underneath changes', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/issues/88578.
+
+    const String heroTag = 'foo';
+    final GlobalKey<NavigatorState> navigator = GlobalKey();
+    final Key smallContainer = UniqueKey();
+    final Key largeContainer = UniqueKey();
+    final MaterialPage<void> unrelatedPage1 = MaterialPage<void>(
+      key: UniqueKey(),
+      child: Center(
+        child: Card(
+          child: Container(
+            color: Colors.red,
+            height: 1000.0,
+            width: 1000.0,
+          ),
+        ),
+      ),
+    );
+    final MaterialPage<void> unrelatedPage2 = MaterialPage<void>(
+      key: UniqueKey(),
+      child: Center(
+        child: Card(
+          child: Container(
+            color: Colors.red,
+            height: 1000.0,
+            width: 1000.0,
+          ),
+        ),
+      ),
+    );
+    final MaterialPage<void> page1 = MaterialPage<void>(
+      key: UniqueKey(),
+      child: Center(
+        child: Card(
+          child: Hero(
+            tag: heroTag,
+            child: Container(
+              key: largeContainer,
+              color: Colors.red,
+              height: 200.0,
+              width: 200.0,
+            ),
+          ),
+        ),
+      ),
+    );
+    final MaterialPage<void> page2 = MaterialPage<void>(
+      key: UniqueKey(),
+      child: Center(
+        child: Card(
+          child: Hero(
+            tag: heroTag,
+            child: Container(
+              key: smallContainer,
+              color: Colors.red,
+              height: 100.0,
+              width: 100.0,
+            ),
+          ),
+        ),
+      ),
+    );
+    final HeroController controller = HeroController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: navigator,
+          home: Navigator(
+            observers: <NavigatorObserver>[controller],
+            pages: <Page<void>>[unrelatedPage1, page1],
+            onPopPage: (_, __) => false,
+          ),
+        )
+    );
+
+    // The initial setup.
+    expect(find.byKey(largeContainer), isOnstage);
+    expect(find.byKey(largeContainer), isInCard);
+    expect(find.byKey(smallContainer, skipOffstage: false), findsNothing);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: Navigator(
+          observers: <NavigatorObserver>[controller],
+          pages: <Page<void>>[unrelatedPage2, page2],
+          onPopPage: (_, __) => false,
+        ),
+      ),
+    );
+
+    expect(find.byKey(largeContainer), isOnstage);
+    expect(find.byKey(largeContainer), isInCard);
+    expect(find.byKey(smallContainer, skipOffstage: false), isOffstage);
+    expect(find.byKey(smallContainer, skipOffstage: false), isInCard);
+
+    await tester.pump();
+
+    // The hero started flying.
+    expect(find.byKey(largeContainer), findsNothing);
+    expect(find.byKey(smallContainer), isOnstage);
+    expect(find.byKey(smallContainer), isNotInCard);
+
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The hero is in-flight.
+    expect(find.byKey(largeContainer), findsNothing);
+    expect(find.byKey(smallContainer), isOnstage);
+    expect(find.byKey(smallContainer), isNotInCard);
+    final Size size = tester.getSize(find.byKey(smallContainer));
+    expect(size.height, greaterThan(100));
+    expect(size.width, greaterThan(100));
+    expect(size.height, lessThan(200));
+    expect(size.width, lessThan(200));
+
+    await tester.pumpAndSettle();
+
+    // The transition has ended.
+    expect(find.byKey(largeContainer), findsNothing);
+    expect(find.byKey(smallContainer), isOnstage);
+    expect(find.byKey(smallContainer), isInCard);
+    expect(tester.getSize(find.byKey(smallContainer)), const Size(100,100));
+  });
+
   testWidgets('On an iOS back swipe and snap, only a single flight should take place', (WidgetTester tester) async {
     int shuttlesBuilt = 0;
     Widget shuttleBuilder(
@@ -2940,9 +3166,10 @@ Future<void> main() async {
   testWidgets('toHero becomes unpaintable after the transition begins', (WidgetTester tester) async {
     final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
     final ScrollController controller = ScrollController();
+    addTearDown(controller.dispose);
 
     RenderAnimatedOpacity? findRenderAnimatedOpacity() {
-      AbstractNode? parent = tester.renderObject(find.byType(Placeholder));
+      RenderObject? parent = tester.renderObject(find.byType(Placeholder));
       while (parent is RenderObject && parent is! RenderAnimatedOpacity) {
         parent = parent.parent;
       }
@@ -3091,72 +3318,78 @@ Future<void> main() async {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+
   testWidgets('smooth transition between different incoming data', (WidgetTester tester) async {
-      final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
-      const Key imageKey1 = Key('image1');
-      const Key imageKey2 = Key('image2');
-      final TestImageProvider imageProvider = TestImageProvider(testImage);
-      final TestWidgetsFlutterBinding testBinding = tester.binding;
+    addTearDown(tester.view.reset);
 
-      testBinding.window.paddingTestValue = const FakeWindowPadding(top: 50);
+    final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
+    const Key imageKey1 = Key('image1');
+    const Key imageKey2 = Key('image2');
+    final TestImageProvider imageProvider = TestImageProvider(testImage);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: navigatorKey,
-          home: Scaffold(
-            appBar: AppBar(title: const Text('test')),
-            body: Hero(
-              tag: 'imageHero',
-              child: GridView.count(
-                crossAxisCount: 3,
-                shrinkWrap: true,
-                children: <Widget>[
-                  Image(image: imageProvider, key: imageKey1),
-                ],
-              ),
+    tester.view.padding = const FakeViewPadding(top: 50);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        home: Scaffold(
+          appBar: AppBar(title: const Text('test')),
+          body: Hero(
+            tag: 'imageHero',
+            child: GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              children: <Widget>[
+                Image(image: imageProvider, key: imageKey1),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      final MaterialPageRoute<void> route2 = MaterialPageRoute<void>(
-        builder: (BuildContext context) {
-          return Scaffold(
-            body: Hero(
-              tag: 'imageHero',
-              child: GridView.count(
-                crossAxisCount: 3,
-                shrinkWrap: true,
-                children: <Widget>[
-                  Image(image: imageProvider, key: imageKey2),
-                ],
-              ),
+    final MaterialPageRoute<void> route2 = MaterialPageRoute<void>(
+      builder: (BuildContext context) {
+        return Scaffold(
+          body: Hero(
+            tag: 'imageHero',
+            child: GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              children: <Widget>[
+                Image(image: imageProvider, key: imageKey2),
+              ],
             ),
-          );
-        },
-      );
+          ),
+        );
+      },
+    );
 
-      // Load images.
-      imageProvider.complete();
-      await tester.pump();
+    // Load images.
+    imageProvider.complete();
+    await tester.pump();
 
-      final double forwardRest = tester.getTopLeft(find.byType(Image)).dy;
-      navigatorKey.currentState!.push(route2);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 1));
-      expect(tester.getTopLeft(find.byType(Image)).dy, moreOrLessEquals(forwardRest, epsilon: 0.1));
-      await tester.pumpAndSettle();
+    final double forwardRest = tester.getTopLeft(find.byType(Image)).dy;
+    navigatorKey.currentState!.push(route2);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(tester.getTopLeft(find.byType(Image)).dy, moreOrLessEquals(forwardRest, epsilon: 0.1));
+    await tester.pumpAndSettle();
 
-      navigatorKey.currentState!.pop(route2);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(tester.getTopLeft(find.byType(Image)).dy, moreOrLessEquals(forwardRest, epsilon: 0.1));
-      await tester.pumpAndSettle();
-      expect(tester.getTopLeft(find.byType(Image)).dy, moreOrLessEquals(forwardRest, epsilon: 0.1));
+    navigatorKey.currentState!.pop(route2);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.getTopLeft(find.byType(Image)).dy, moreOrLessEquals(forwardRest, epsilon: 0.1));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.byType(Image)).dy, moreOrLessEquals(forwardRest, epsilon: 0.1));
+  });
 
-      testBinding.window.clearAllTestValues();
-    },
-  );
+  test('HeroController dispatches memory events', () async {
+    await expectLater(
+      await memoryEvents(() => HeroController().dispose(), HeroController),
+      areCreateAndDispose,
+    );
+  });
 }
 
 class TestDependencies extends StatelessWidget {
@@ -3169,7 +3402,7 @@ class TestDependencies extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.ltr,
       child: MediaQuery(
-        data: MediaQueryData.fromWindow(WidgetsBinding.instance.window),
+        data: MediaQueryData.fromView(View.of(context)),
         child: child,
       ),
     );

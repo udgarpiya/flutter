@@ -8,6 +8,7 @@ import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/process.dart';
+import 'package:flutter_tools/src/base/version.dart';
 import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/devfs.dart';
 import 'package:flutter_tools/src/device.dart';
@@ -36,6 +37,7 @@ void main() {
   late FakePlatform osx;
   late FileSystemUtils fsUtils;
   late MemoryFileSystem fileSystem;
+  final Logger logger = FakeLogger();
 
   setUp(() {
     osx = FakePlatform(
@@ -61,6 +63,7 @@ void main() {
         name: 'iPhone 11',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-14-4',
+        logger: logger,
       );
       final DevicePortForwarder portForwarder = simulator.portForwarder;
       await portForwarder.forward(123);
@@ -86,6 +89,7 @@ void main() {
       name: 'iPhone 11',
       simControl: FakeSimControl(),
       simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-14-4',
+      logger: logger,
     );
 
     expect(simulator.supportsRuntimeMode(BuildMode.debug), true);
@@ -112,6 +116,7 @@ void main() {
         name: 'iPhone 11',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-14-4',
+        logger: logger,
       );
       expect(simulator.logFilePath, '/foo/bar/Library/Logs/CoreSimulator/123/system.log');
     }, overrides: <Type, Generator>{
@@ -129,6 +134,7 @@ void main() {
         name: 'iPhone 11',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-14-4',
+        logger: logger,
       );
       expect(simulator.logFilePath, '/baz/qux/456/system.log');
     }, overrides: <Type, Generator>{
@@ -136,28 +142,6 @@ void main() {
       FileSystemUtils: () => fsUtils,
       FileSystem: () => fileSystem,
       ProcessManager: () => FakeProcessManager.any(),
-    });
-  });
-
-  group('compareIosVersions', () {
-    testWithoutContext('compares correctly', () {
-      // This list must be sorted in ascending preference order
-      final List<String> testList = <String>[
-        '8', '8.0', '8.1', '8.2',
-        '9', '9.0', '9.1', '9.2',
-        '10', '10.0', '10.1',
-      ];
-
-      for (int i = 0; i < testList.length; i++) {
-        expect(compareIosVersions(testList[i], testList[i]), 0);
-      }
-
-      for (int i = 0; i < testList.length - 1; i++) {
-        for (int j = i + 1; j < testList.length; j++) {
-          expect(compareIosVersions(testList[i], testList[j]), lessThan(0));
-          expect(compareIosVersions(testList[j], testList[i]), greaterThan(0));
-        }
-      }
     });
   });
 
@@ -175,6 +159,7 @@ void main() {
         name: 'iPhone SE',
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
         simControl: simControl,
+        logger: logger,
       );
 
       expect(await device.sdkMajorVersion, 11);
@@ -186,6 +171,7 @@ void main() {
         name: 'iPhone SE',
         simulatorCategory: 'iOS 11.2',
         simControl: simControl,
+        logger: logger,
       );
 
       expect(await device.sdkMajorVersion, 11);
@@ -197,6 +183,7 @@ void main() {
         name: 'iPhone SE',
         simulatorCategory: 'iOS 11.2',
         simControl: simControl,
+        logger: logger,
       );
 
       expect(device.category, Category.mobile);
@@ -216,6 +203,7 @@ void main() {
         name: 'Apple TV',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.tvOS-14-5',
+        logger: logger,
       );
       expect(simulator.isSupported(), false);
     }, overrides: <Type, Generator>{
@@ -230,6 +218,7 @@ void main() {
         name: 'Apple Watch',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.watchOS-8-0',
+        logger: logger,
       ).isSupported(), false);
     }, overrides: <Type, Generator>{
       Platform: () => osx,
@@ -243,6 +232,7 @@ void main() {
         name: 'iPad 2',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       ).isSupported(), true);
     }, overrides: <Type, Generator>{
       Platform: () => osx,
@@ -256,6 +246,7 @@ void main() {
         name: 'iPad Retina',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       ).isSupported(), true);
     }, overrides: <Type, Generator>{
       Platform: () => osx,
@@ -269,6 +260,7 @@ void main() {
         name: 'iPhone 5',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       ).isSupported(), true);
     }, overrides: <Type, Generator>{
       Platform: () => osx,
@@ -282,6 +274,7 @@ void main() {
         name: 'iPhone 5s',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       ).isSupported(), true);
     }, overrides: <Type, Generator>{
       Platform: () => osx,
@@ -295,6 +288,7 @@ void main() {
         name: 'iPhone SE',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       ).isSupported(), true);
     }, overrides: <Type, Generator>{
       Platform: () => osx,
@@ -308,6 +302,7 @@ void main() {
         name: 'iPhone 7 Plus',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       ).isSupported(), true);
     }, overrides: <Type, Generator>{
       Platform: () => osx,
@@ -321,6 +316,7 @@ void main() {
         name: 'iPhone X',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       ).isSupported(), true);
     }, overrides: <Type, Generator>{
       Platform: () => osx,
@@ -358,6 +354,7 @@ void main() {
         name: 'iPhone SE',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       );
 
       final File screenshot = MemoryFileSystem.test().file('screenshot.png');
@@ -381,6 +378,7 @@ void main() {
         name: 'iPhone SE',
         simulatorCategory: 'iOS 9.3',
         simControl: simControl,
+        logger: logger,
       );
       fakeProcessManager.addCommand(const FakeCommand(command: <String>[
         'tail',
@@ -408,6 +406,7 @@ void main() {
         name: 'iPhone SE',
         simulatorCategory: 'iOS 11.0',
         simControl: simControl,
+        logger: logger,
       );
       const String expectedPredicate = 'eventType = logEvent AND '
           'processImagePath ENDSWITH "My Super Awesome App" AND '
@@ -442,6 +441,7 @@ void main() {
         name: 'iPhone SE',
         simulatorCategory: 'iOS 11.0',
         simControl: simControl,
+        logger: logger,
       );
       const String expectedPredicate = 'eventType = logEvent AND '
           '(senderImagePath ENDSWITH "/Flutter" OR senderImagePath ENDSWITH "/libswiftCore.dylib" OR processImageUUID == senderImageUUID) AND '
@@ -506,6 +506,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
           name: 'iPhone 11',
           simulatorCategory: 'iOS 10.0',
           simControl: simControl,
+          logger: logger,
         );
         final DeviceLogReader logReader = device.getLogReader(
           app: await BuildableIOSApp.fromProject(mockIosProject, null),
@@ -541,6 +542,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
           name: 'iPhone 11',
           simulatorCategory: 'iOS 10.3',
           simControl: simControl,
+          logger: logger,
         );
         final DeviceLogReader logReader = device.getLogReader(
           app: await BuildableIOSApp.fromProject(mockIosProject, null),
@@ -589,6 +591,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
           name: 'iPhone 11',
           simulatorCategory: 'iOS 10.3',
           simControl: simControl,
+          logger: logger,
         );
         final DeviceLogReader logReader = device.getLogReader(
           app: await BuildableIOSApp.fromProject(mockIosProject, null),
@@ -661,6 +664,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
           name: 'iPhone 11',
           simulatorCategory: 'iOS 11.0',
           simControl: simControl,
+          logger: logger,
         );
         final DeviceLogReader logReader = device.getLogReader(
           app: await BuildableIOSApp.fromProject(mockIosProject, null),
@@ -704,6 +708,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
           name: 'iPhone 11',
           simulatorCategory: 'iOS 11.0',
           simControl: simControl,
+          logger: logger,
         );
         final DeviceLogReader logReader = device.getLogReader(
           app: await BuildableIOSApp.fromProject(mockIosProject, null),
@@ -771,14 +776,16 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
     late FakeProcessManager fakeProcessManager;
     Xcode xcode;
     late SimControl simControl;
+    late BufferLogger logger;
     const String deviceId = 'smart-phone';
     const String appId = 'flutterApp';
 
     setUp(() {
       fakeProcessManager = FakeProcessManager.empty();
       xcode = Xcode.test(processManager: FakeProcessManager.any());
+      logger = BufferLogger.test();
       simControl = SimControl(
-        logger: BufferLogger.test(),
+        logger: logger,
         processManager: fakeProcessManager,
         xcode: xcode,
       );
@@ -843,6 +850,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
         name: 'Testo',
         simulatorCategory: 'NaN',
         simControl: simControl,
+        logger: logger,
       );
 
       expect(await iosSimulatorA.sdkMajorVersion, 11);
@@ -901,6 +909,190 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
         throwsToolExit(message: r'Unable to launch'),
       );
     });
+
+    testWithoutContext('.stopApp() handles exceptions', () async {
+      fakeProcessManager.addCommand(const FakeCommand(
+        command: <String>[
+          'xcrun',
+          'simctl',
+          'terminate',
+          deviceId,
+          appId,
+        ],
+        exception: ProcessException('xcrun', <String>[]),
+      ));
+
+      expect(
+        () async => simControl.stopApp(deviceId, appId),
+        throwsToolExit(message: 'Unable to terminate'),
+      );
+      expect(fakeProcessManager, hasNoRemainingExpectations);
+    });
+
+    testWithoutContext('simulator stopApp handles null app package', () async {
+      final IOSSimulator iosSimulator = IOSSimulator(
+        'x',
+        name: 'Testo',
+        simulatorCategory: 'NaN',
+        simControl: simControl,
+        logger: logger,
+      );
+
+      expect(await iosSimulator.stopApp(null), isFalse);
+    });
+
+    testWithoutContext('listAvailableIOSRuntimes succeeds', () async {
+      const String validRuntimesOutput = '''
+{
+  "runtimes" : [
+    {
+      "bundlePath" : "/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 15.4.simruntime",
+      "buildversion" : "19E240",
+      "platform" : "iOS",
+      "runtimeRoot" : "/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 15.4.simruntime/Contents/Resources/RuntimeRoot",
+      "identifier" : "com.apple.CoreSimulator.SimRuntime.iOS-15-4",
+      "version" : "15.4",
+      "isInternal" : false,
+      "isAvailable" : true,
+      "name" : "iOS 15.4",
+      "supportedDeviceTypes" : [
+        {
+          "bundlePath" : "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 6s.simdevicetype",
+          "name" : "iPhone 6s",
+          "identifier" : "com.apple.CoreSimulator.SimDeviceType.iPhone-6s",
+          "productFamily" : "iPhone"
+        },
+        {
+          "bundlePath" : "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 6s Plus.simdevicetype",
+          "name" : "iPhone 6s Plus",
+          "identifier" : "com.apple.CoreSimulator.SimDeviceType.iPhone-6s-Plus",
+          "productFamily" : "iPhone"
+        }
+      ]
+    },
+    {
+      "bundlePath" : "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime",
+      "buildversion" : "20E247",
+      "platform" : "iOS",
+      "runtimeRoot" : "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot",
+      "identifier" : "com.apple.CoreSimulator.SimRuntime.iOS-16-4",
+      "version" : "16.4",
+      "isInternal" : false,
+      "isAvailable" : true,
+      "name" : "iOS 16.4",
+      "supportedDeviceTypes" : [
+        {
+          "bundlePath" : "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 8.simdevicetype",
+          "name" : "iPhone 8",
+          "identifier" : "com.apple.CoreSimulator.SimDeviceType.iPhone-8",
+          "productFamily" : "iPhone"
+        },
+        {
+          "bundlePath" : "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 8 Plus.simdevicetype",
+          "name" : "iPhone 8 Plus",
+          "identifier" : "com.apple.CoreSimulator.SimDeviceType.iPhone-8-Plus",
+          "productFamily" : "iPhone"
+        }
+      ]
+    },
+    {
+      "bundlePath" : "/Library/Developer/CoreSimulator/Volumes/iOS_21A5268h/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 17.0.simruntime",
+      "buildversion" : "21A5268h",
+      "platform" : "iOS",
+      "runtimeRoot" : "/Library/Developer/CoreSimulator/Volumes/iOS_21A5268h/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 17.0.simruntime/Contents/Resources/RuntimeRoot",
+      "identifier" : "com.apple.CoreSimulator.SimRuntime.iOS-17-0",
+      "version" : "17.0",
+      "isInternal" : false,
+      "isAvailable" : true,
+      "name" : "iOS 17.0",
+      "supportedDeviceTypes" : [
+        {
+          "bundlePath" : "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 8.simdevicetype",
+          "name" : "iPhone 8",
+          "identifier" : "com.apple.CoreSimulator.SimDeviceType.iPhone-8",
+          "productFamily" : "iPhone"
+        },
+        {
+          "bundlePath" : "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/DeviceTypes/iPhone 8 Plus.simdevicetype",
+          "name" : "iPhone 8 Plus",
+          "identifier" : "com.apple.CoreSimulator.SimDeviceType.iPhone-8-Plus",
+          "productFamily" : "iPhone"
+        }
+      ]
+    }
+  ]
+}
+
+''';
+      fakeProcessManager.addCommand(const FakeCommand(
+        command: <String>[
+          'xcrun',
+          'simctl',
+          'list',
+          'runtimes',
+          'available',
+          'iOS',
+          '--json',
+        ],
+        stdout: validRuntimesOutput,
+      ));
+
+      final List<IOSSimulatorRuntime> runtimes = await simControl.listAvailableIOSRuntimes();
+
+      final IOSSimulatorRuntime runtime1 = runtimes[0];
+      expect(runtime1.bundlePath, '/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 15.4.simruntime');
+      expect(runtime1.buildVersion, '19E240');
+      expect(runtime1.platform, 'iOS');
+      expect(runtime1.runtimeRoot, '/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 15.4.simruntime/Contents/Resources/RuntimeRoot');
+      expect(runtime1.identifier, 'com.apple.CoreSimulator.SimRuntime.iOS-15-4');
+      expect(runtime1.version, Version(15, 4, null));
+      expect(runtime1.isInternal, false);
+      expect(runtime1.isAvailable, true);
+      expect(runtime1.name, 'iOS 15.4');
+
+      final IOSSimulatorRuntime runtime2 = runtimes[1];
+      expect(runtime2.bundlePath, '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime');
+      expect(runtime2.buildVersion, '20E247');
+      expect(runtime2.platform, 'iOS');
+      expect(runtime2.runtimeRoot, '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS.simruntime/Contents/Resources/RuntimeRoot');
+      expect(runtime2.identifier, 'com.apple.CoreSimulator.SimRuntime.iOS-16-4');
+      expect(runtime2.version, Version(16, 4, null));
+      expect(runtime2.isInternal, false);
+      expect(runtime2.isAvailable, true);
+      expect(runtime2.name, 'iOS 16.4');
+
+      final IOSSimulatorRuntime runtime3 = runtimes[2];
+      expect(runtime3.bundlePath, '/Library/Developer/CoreSimulator/Volumes/iOS_21A5268h/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 17.0.simruntime');
+      expect(runtime3.buildVersion, '21A5268h');
+      expect(runtime3.platform, 'iOS');
+      expect(runtime3.runtimeRoot, '/Library/Developer/CoreSimulator/Volumes/iOS_21A5268h/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 17.0.simruntime/Contents/Resources/RuntimeRoot');
+      expect(runtime3.identifier, 'com.apple.CoreSimulator.SimRuntime.iOS-17-0');
+      expect(runtime3.version, Version(17, 0, null));
+      expect(runtime3.isInternal, false);
+      expect(runtime3.isAvailable, true);
+      expect(runtime3.name, 'iOS 17.0');
+    });
+
+    testWithoutContext('listAvailableIOSRuntimes handles bad simctl output', () async {
+      fakeProcessManager.addCommand(const FakeCommand(
+        command: <String>[
+          'xcrun',
+          'simctl',
+          'list',
+          'runtimes',
+          'available',
+          'iOS',
+          '--json',
+        ],
+        stdout: 'Install Started',
+      ));
+
+      final List<IOSSimulatorRuntime> runtimes = await simControl.listAvailableIOSRuntimes();
+
+      expect(runtimes, isEmpty);
+      expect(logger.errorText, contains('simctl returned non-JSON response:'));
+      expect(fakeProcessManager, hasNoRemainingExpectations);
+    });
   });
 
   group('startApp', () {
@@ -922,6 +1114,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
         name: 'iPhone SE',
         simulatorCategory: 'iOS 11.2',
         simControl: simControl,
+        logger: logger,
       );
       testPlistParser.setProperty('CFBundleIdentifier', 'correct');
 
@@ -933,7 +1126,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
         applicationPackage: mockDir,
       );
 
-      const BuildInfo mockInfo = BuildInfo(BuildMode.debug, 'flavor', treeShakeIcons: false);
+      const BuildInfo mockInfo = BuildInfo(BuildMode.debug, 'flavor', treeShakeIcons: false, packageConfigPath: '.dart_tool/package_config.json');
       final DebuggingOptions mockOptions = DebuggingOptions.disabled(mockInfo);
       await device.startApp(package, prebuiltApplication: true, debuggingOptions: mockOptions);
 
@@ -951,6 +1144,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
         name: 'iPhone SE',
         simulatorCategory: 'iOS 11.2',
         simControl: simControl,
+        logger: logger,
       );
 
       final Directory mockDir = globals.fs.currentDirectory;
@@ -961,7 +1155,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
         applicationPackage: mockDir,
       );
 
-      const BuildInfo mockInfo = BuildInfo(BuildMode.debug, 'flavor', treeShakeIcons: false);
+      const BuildInfo mockInfo = BuildInfo(BuildMode.debug, 'flavor', treeShakeIcons: false, packageConfigPath: '.dart_tool/package_config.json');
       final DebuggingOptions mockOptions = DebuggingOptions.disabled(mockInfo);
       final LaunchResult result = await device.startApp(package, prebuiltApplication: true, debuggingOptions: mockOptions);
 
@@ -976,12 +1170,13 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
       Xcode: () => xcode,
     });
 
-    testUsingContext('startApp respects the enable software rendering flag', () async {
+    testUsingContext('startApp forwards all supported debugging options', () async {
       final IOSSimulator device = IOSSimulator(
         'x',
         name: 'iPhone SE',
         simulatorCategory: 'iOS 11.2',
         simControl: simControl,
+        logger: logger,
       );
       testPlistParser.setProperty('CFBundleIdentifier', 'correct');
 
@@ -993,11 +1188,54 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
         applicationPackage: mockDir,
       );
 
-      const BuildInfo mockInfo = BuildInfo(BuildMode.debug, 'flavor', treeShakeIcons: false);
-      final DebuggingOptions mockOptions = DebuggingOptions.enabled(mockInfo, enableSoftwareRendering: true);
-      await device.startApp(package, prebuiltApplication: true, debuggingOptions: mockOptions);
+      const BuildInfo mockInfo = BuildInfo(BuildMode.debug, 'flavor', treeShakeIcons: false, packageConfigPath: '.dart_tool/package_config.json');
+      final DebuggingOptions mockOptions = DebuggingOptions.enabled(
+        mockInfo,
+        enableSoftwareRendering: true,
+        traceSystrace: true,
+        traceToFile: 'path/to/trace.binpb',
+        startPaused: true,
+        disableServiceAuthCodes: true,
+        skiaDeterministicRendering: true,
+        useTestFonts: true,
+        traceSkia: true,
+        traceAllowlist: 'foo,bar',
+        traceSkiaAllowlist: 'skia.a,skia.b',
+        endlessTraceBuffer: true,
+        dumpSkpOnShaderCompilation: true,
+        verboseSystemLogs: true,
+        cacheSkSL: true,
+        purgePersistentCache: true,
+        dartFlags: '--baz',
+        enableImpeller: ImpellerStatus.disabled,
+        nullAssertions: true,
+        hostVmServicePort: 0,
+      );
 
-      expect(simControl.requests.single.launchArgs, contains('--enable-software-rendering'));
+      await device.startApp(package, prebuiltApplication: true, debuggingOptions: mockOptions);
+      expect(simControl.requests.single.launchArgs, unorderedEquals(<String>[
+        '--enable-dart-profiling',
+        '--enable-checked-mode',
+        '--verify-entry-points',
+        '--enable-software-rendering',
+        '--trace-systrace',
+        '--trace-to-file="path/to/trace.binpb"',
+        '--start-paused',
+        '--disable-service-auth-codes',
+        '--skia-deterministic-rendering',
+        '--use-test-fonts',
+        '--trace-skia',
+        '--trace-allowlist="foo,bar"',
+        '--trace-skia-allowlist="skia.a,skia.b"',
+        '--endless-trace-buffer',
+        '--dump-skp-on-shader-compilation',
+        '--verbose-logging',
+        '--cache-sksl',
+        '--purge-persistent-cache',
+        '--enable-impeller=false',
+        '--dart-flags=--baz,--null_assertions',
+        '--vm-service-port=0',
+      ]));
     }, overrides: <Type, Generator>{
       PlistParser: () => testPlistParser,
       FileSystem: () => fileSystem,
@@ -1011,6 +1249,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
         name: 'iPhone SE',
         simulatorCategory: 'iOS 11.2',
         simControl: simControl,
+        logger: logger,
       );
       testPlistParser.setProperty('CFBundleIdentifier', 'correct');
 
@@ -1022,7 +1261,7 @@ Dec 20 17:04:32 md32-11-vm1 Another App[88374]: Ignore this text'''
         applicationPackage: mockDir,
       );
 
-      const BuildInfo mockInfo = BuildInfo(BuildMode.debug, 'flavor', treeShakeIcons: false);
+      const BuildInfo mockInfo = BuildInfo(BuildMode.debug, 'flavor', treeShakeIcons: false, packageConfigPath: '.dart_tool/package_config.json');
       final DebuggingOptions mockOptions = DebuggingOptions.enabled(mockInfo, enableSoftwareRendering: true);
       await device.startApp(package, prebuiltApplication: true, debuggingOptions: mockOptions, route: '/animation');
 
@@ -1053,7 +1292,6 @@ name: example
 flutter:
   module: {}
 ''');
-      globals.fs.file('.packages').createSync();
       final FlutterProject flutterProject = FlutterProject.fromDirectoryTest(globals.fs.currentDirectory);
 
       final IOSSimulator simulator = IOSSimulator(
@@ -1061,6 +1299,7 @@ flutter:
         name: 'iPhone 11',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       );
       expect(simulator.isSupportedForProject(flutterProject), true);
     }, overrides: <Type, Generator>{
@@ -1072,7 +1311,6 @@ flutter:
 
     testUsingContext('is true with editable host app', () async {
       globals.fs.file('pubspec.yaml').createSync();
-      globals.fs.file('.packages').createSync();
       globals.fs.directory('ios').createSync();
       final FlutterProject flutterProject = FlutterProject.fromDirectoryTest(globals.fs.currentDirectory);
 
@@ -1081,6 +1319,7 @@ flutter:
         name: 'iPhone 11',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       );
       expect(simulator.isSupportedForProject(flutterProject), true);
     }, overrides: <Type, Generator>{
@@ -1091,7 +1330,6 @@ flutter:
 
     testUsingContext('is false with no host app and no module', () async {
       globals.fs.file('pubspec.yaml').createSync();
-      globals.fs.file('.packages').createSync();
       final FlutterProject flutterProject = FlutterProject.fromDirectoryTest(globals.fs.currentDirectory);
 
       final IOSSimulator simulator = IOSSimulator(
@@ -1099,6 +1337,7 @@ flutter:
         name: 'iPhone 11',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       );
       expect(simulator.isSupportedForProject(flutterProject), false);
     }, overrides: <Type, Generator>{
@@ -1113,6 +1352,7 @@ flutter:
         name: 'iPhone 11',
         simControl: simControl,
         simulatorCategory: 'com.apple.CoreSimulator.SimRuntime.iOS-11-3',
+        logger: logger,
       );
 
       expect(simulator.createDevFSWriter(null, ''), isA<LocalDevFSWriter>());
@@ -1125,7 +1365,7 @@ class FakeIosProject extends Fake implements IosProject {
   Future<String> productBundleIdentifier(BuildInfo? buildInfo) async => 'com.example.test';
 
   @override
-  Future<String> hostAppBundleName(BuildInfo? buildInfo) async => 'My Super Awesome App.app';
+  Future<String> productName(BuildInfo? buildInfo) async => 'My Super Awesome App';
 }
 
 class FakeSimControl extends Fake implements SimControl {
@@ -1133,7 +1373,7 @@ class FakeSimControl extends Fake implements SimControl {
 
   @override
   Future<RunResult> launch(String deviceId, String appIdentifier, [ List<String>? launchArgs ]) async {
-    requests.add(LaunchRequest(deviceId, appIdentifier, launchArgs));
+    requests.add(LaunchRequest(appIdentifier, launchArgs));
     return RunResult(ProcessResult(0, 0, '', ''), <String>['test']);
   }
 
@@ -1144,9 +1384,8 @@ class FakeSimControl extends Fake implements SimControl {
 }
 
 class LaunchRequest {
-  const LaunchRequest(this.deviceId, this.appIdentifier, this.launchArgs);
+  const LaunchRequest(this.appIdentifier, this.launchArgs);
 
-  final String deviceId;
   final String appIdentifier;
   final List<String>? launchArgs;
 }

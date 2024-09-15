@@ -39,20 +39,20 @@ abstract class ObjectEvent{
   /// long living place as it will prevent garbage collection.
   final Object object;
 
-  /// The representation of the event in a form, acceptible by a
+  /// The representation of the event in a form, acceptable by a
   /// pure dart library, that cannot depend on Flutter.
   ///
   /// The method enables code like:
   /// ```dart
   /// void myDartMethod(Map<Object, Map<String, Object>> event) {}
-  /// MemoryAllocations.instance
+  /// FlutterMemoryAllocations.instance
   ///   .addListener((ObjectEvent event) => myDartMethod(event.toMap()));
   /// ```
   Map<Object, Map<String, Object>> toMap();
 }
 
 /// A listener of [ObjectEvent].
-typedef ObjectEventListener = void Function(ObjectEvent);
+typedef ObjectEventListener = void Function(ObjectEvent event);
 
 /// An event that describes creation of an object.
 class ObjectCreated extends ObjectEvent {
@@ -64,6 +64,9 @@ class ObjectCreated extends ObjectEvent {
   });
 
   /// Name of the instrumented library.
+  ///
+  /// The format of this parameter should be a library Uri.
+  /// For example: `'package:flutter/rendering.dart'`.
   final String library;
 
   /// Name of the instrumented class.
@@ -95,12 +98,20 @@ class ObjectDisposed extends ObjectEvent {
 }
 
 /// An interface for listening to object lifecycle events.
+@Deprecated(
+  'Use `FlutterMemoryAllocations` instead. '
+  'The class `MemoryAllocations` will be introduced in a pure Dart library. '
+  'This feature was deprecated after v3.18.0-18.0.pre.'
+)
+typedef MemoryAllocations = FlutterMemoryAllocations;
+
+/// An interface for listening to object lifecycle events.
 ///
 /// If [kFlutterMemoryAllocationsEnabled] is true,
-/// [MemoryAllocations] listens to creation and disposal events
+/// [FlutterMemoryAllocations] listens to creation and disposal events
 /// for disposable objects in Flutter Framework.
-/// To dispatch events for other objects, invoke
-/// [MemoryAllocations.dispatchObjectEvent].
+/// To dispatch other events objects, invoke
+/// [FlutterMemoryAllocations.dispatchObjectEvent].
 ///
 /// Use this class with condition `kFlutterMemoryAllocationsEnabled`,
 /// to make sure not to increase size of the application by the code
@@ -108,13 +119,13 @@ class ObjectDisposed extends ObjectEvent {
 ///
 /// The class is optimized for massive event flow and small number of
 /// added or removed listeners.
-class MemoryAllocations {
-  MemoryAllocations._();
+class FlutterMemoryAllocations {
+  FlutterMemoryAllocations._();
 
-  /// The shared instance of [MemoryAllocations].
+  /// The shared instance of [FlutterMemoryAllocations].
   ///
   /// Only call this when [kFlutterMemoryAllocationsEnabled] is true.
-  static final MemoryAllocations instance = MemoryAllocations._();
+  static final FlutterMemoryAllocations instance = FlutterMemoryAllocations._();
 
   /// List of listeners.
   ///
@@ -258,6 +269,34 @@ class MemoryAllocations {
     _tryDefragmentListeners();
   }
 
+  /// Create [ObjectCreated] and invoke [dispatchObjectEvent] if there are listeners.
+  ///
+  /// This method is more efficient than [dispatchObjectEvent] if the event object is not created yet.
+  void dispatchObjectCreated({
+    required String library,
+    required String className,
+    required Object object,
+  }) {
+    if (!hasListeners) {
+      return;
+    }
+    dispatchObjectEvent(ObjectCreated(
+      library: library,
+      className: className,
+      object: object,
+    ));
+  }
+
+  /// Create [ObjectDisposed] and invoke [dispatchObjectEvent] if there are listeners.
+  ///
+  /// This method is more efficient than [dispatchObjectEvent] if the event object is not created yet.
+  void dispatchObjectDisposed({required Object object}) {
+    if (!hasListeners) {
+      return;
+    }
+    dispatchObjectEvent(ObjectDisposed(object: object));
+  }
+
   void _subscribeToSdkObjects() {
     assert(ui.Image.onCreate == null);
     assert(ui.Image.onDispose == null);
@@ -283,7 +322,7 @@ class MemoryAllocations {
   void _imageOnCreate(ui.Image image) {
     dispatchObjectEvent(ObjectCreated(
       library: _dartUiLibrary,
-      className: 'Image',
+      className: '${ui.Image}',
       object: image,
     ));
   }
@@ -291,7 +330,7 @@ class MemoryAllocations {
   void _pictureOnCreate(ui.Picture picture) {
     dispatchObjectEvent(ObjectCreated(
       library: _dartUiLibrary,
-      className: 'Picture',
+      className: '${ui.Picture}',
       object: picture,
     ));
   }

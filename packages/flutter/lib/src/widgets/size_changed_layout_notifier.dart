@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'package:flutter/rendering.dart';
 
 import 'framework.dart';
@@ -74,8 +77,7 @@ class _RenderSizeChangedWithCallback extends RenderProxyBox {
   _RenderSizeChangedWithCallback({
     RenderBox? child,
     required this.onLayoutChangedCallback,
-  }) : assert(onLayoutChangedCallback != null),
-       super(child);
+  }) : super(child);
 
   // There's a 1:1 relationship between the _RenderSizeChangedWithCallback and
   // the `context` that is captured by the closure created by createRenderObject

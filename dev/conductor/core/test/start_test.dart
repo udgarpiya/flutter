@@ -23,8 +23,7 @@ void main() {
     const String flutterRoot = '/flutter';
     const String checkoutsParentDirectory = '$flutterRoot/dev/tools/';
     const String githubUsername = 'user';
-    const String frameworkMirror =
-        'git@github.com:$githubUsername/flutter.git';
+    const String frameworkMirror = 'git@github.com:$githubUsername/flutter.git';
     const String engineMirror = 'git@github.com:$githubUsername/engine.git';
     const String candidateBranch = 'flutter-1.2-candidate.3';
     const String releaseChannel = 'beta';
@@ -75,6 +74,85 @@ void main() {
       );
       return CommandRunner<void>('codesign-test', '')..addCommand(command);
     }
+
+    group('start arg parser', () {
+      const String nextDartRevision =
+          'f6c91128be6b77aef8351e1e3a9d07c85bc2e46e';
+      late StartCommand startCommand;
+      setUp(() {
+        final String operatingSystem = const LocalPlatform().operatingSystem;
+        final Map<String, String> environment = <String, String>{
+          'HOME': '/path/to/user/home',
+        };
+        final Directory homeDir = fileSystem.directory(
+          environment['HOME'],
+        );
+        // Tool assumes this exists
+        homeDir.createSync(recursive: true);
+        platform = FakePlatform(
+          environment: environment,
+          operatingSystem: operatingSystem,
+          pathSeparator: '/',
+        );
+        processManager = FakeProcessManager.list(<FakeCommand>[]);
+        checkouts = Checkouts(
+          fileSystem: fileSystem,
+          parentDirectory: fileSystem.directory(checkoutsParentDirectory),
+          platform: platform,
+          processManager: processManager,
+          stdio: stdio,
+        );
+        startCommand = StartCommand(
+            checkouts: checkouts, conductorVersion: conductorVersion);
+      });
+
+      test('default args', () async {
+        final List<String> args = <String>[
+          'start',
+          '--$kCandidateOption',
+          candidateBranch,
+          '--$kReleaseOption',
+          'stable',
+          '--$kStateOption',
+          '/path/to/statefile.json',
+          '--$kDartRevisionOption',
+          nextDartRevision,
+          '--$kGithubUsernameOption',
+          githubUsername,
+        ];
+        final StartContext context =
+            startCommand.createContext(startCommand.argParser.parse(args));
+        expect(context.frameworkUpstream, FrameworkRepository.defaultUpstream);
+        expect(context.frameworkMirror, contains(githubUsername));
+        expect(context.frameworkMirror, contains('/flutter.git'));
+        expect(context.engineUpstream, EngineRepository.defaultUpstream);
+      });
+
+      test('overridden mirror', () async {
+        const String customFrameworkMirror =
+            'git@github.com:$githubUsername/flutter-work.git';
+        final List<String> args = <String>[
+          'start',
+          '--$kCandidateOption',
+          candidateBranch,
+          '--$kReleaseOption',
+          'stable',
+          '--$kStateOption',
+          '/path/to/statefile.json',
+          '--$kDartRevisionOption',
+          nextDartRevision,
+          '--$kGithubUsernameOption',
+          githubUsername,
+          '--$kFrameworkMirrorOption',
+          customFrameworkMirror,
+        ];
+        final StartContext context =
+            startCommand.createContext(startCommand.argParser.parse(args));
+        expect(
+          context.frameworkMirror, customFrameworkMirror
+        );
+      });
+    });
 
     test('throws exception if run from Windows', () async {
       final CommandRunner<void> runner = createRunner(
@@ -159,7 +237,7 @@ void main() {
               EngineRepository.defaultUpstream,
               engine.path,
             ],
-            onRun: () {
+            onRun: (_) {
               // Create the DEPS file which the tool will update
               engine.createSync(recursive: true);
               depsFile
@@ -368,7 +446,7 @@ void main() {
               EngineRepository.defaultUpstream,
               engine.path,
             ],
-            onRun: () {
+            onRun: (_) {
               // Create the DEPS file which the tool will update
               engine.createSync(recursive: true);
               depsFile
@@ -531,7 +609,7 @@ void main() {
           '171876a4e6cf56ee6da1f97d203926bd7afda7ef';
       const String nextDartRevision =
           'f6c91128be6b77aef8351e1e3a9d07c85bc2e46e';
-      // note that this significantly behind the candidate branch name
+      // This is significantly behind the candidate branch name
       const String previousVersion = '0.9.0-1.0.pre';
       // This is what this release will be
       const String nextVersion = '0.9.0-1.1.pre';
@@ -554,7 +632,7 @@ void main() {
               EngineRepository.defaultUpstream,
               engine.path,
             ],
-            onRun: () {
+            onRun: (_) {
               // Create the DEPS file which the tool will update
               engine.createSync(recursive: true);
               depsFile
@@ -763,7 +841,7 @@ void main() {
               EngineRepository.defaultUpstream,
               engine.path,
             ],
-            onRun: () {
+            onRun: (_) {
               // Create the DEPS file which the tool will update
               engine.createSync(recursive: true);
               depsFile
@@ -972,7 +1050,7 @@ void main() {
               EngineRepository.defaultUpstream,
               engine.path,
             ],
-            onRun: () {
+            onRun: (_) {
               // Create the DEPS file which the tool will update
               engine.createSync(recursive: true);
               depsFile
@@ -1143,10 +1221,8 @@ void main() {
         candidateBranch: candidateBranch,
         checkouts: checkouts,
         dartRevision: nextDartRevision,
-        engineCherrypickRevisions: <String>[],
         engineMirror: engineMirror,
         engineUpstream: EngineRepository.defaultUpstream,
-        frameworkCherrypickRevisions: <String>[],
         frameworkMirror: frameworkMirror,
         frameworkUpstream: FrameworkRepository.defaultUpstream,
         releaseChannel: releaseChannel,

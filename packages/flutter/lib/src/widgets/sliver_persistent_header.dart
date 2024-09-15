@@ -2,6 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// @docImport 'package:flutter/material.dart';
+///
+/// @docImport 'nested_scroll_view.dart';
+/// @docImport 'scroll_view.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart' show TickerProvider;
@@ -114,19 +120,17 @@ abstract class SliverPersistentHeaderDelegate {
 ///
 /// This is the layout primitive that [SliverAppBar] uses for its
 /// shrinking/growing effect.
+///
+/// _To learn more about slivers, see [CustomScrollView.slivers]._
 class SliverPersistentHeader extends StatelessWidget {
   /// Creates a sliver that varies its size when it is scrolled to the start of
   /// a viewport.
-  ///
-  /// The [delegate], [pinned], and [floating] arguments must not be null.
   const SliverPersistentHeader({
     super.key,
     required this.delegate,
     this.pinned = false,
     this.floating = false,
-  }) : assert(delegate != null),
-       assert(pinned != null),
-       assert(floating != null);
+  });
 
   /// Configuration for the sliver's layout.
   ///
@@ -212,7 +216,7 @@ class _FloatingHeaderState extends State<_FloatingHeader> {
     if (_position != null) {
       _position!.isScrollingNotifier.removeListener(_isScrollingListener);
     }
-    _position = Scrollable.of(context)?.position;
+    _position = Scrollable.maybeOf(context)?.position;
     if (_position != null) {
       _position!.isScrollingNotifier.addListener(_isScrollingListener);
     }
@@ -255,7 +259,7 @@ class _SliverPersistentHeaderElement extends RenderObjectElement {
   _SliverPersistentHeaderElement(
     _SliverPersistentHeaderRenderObjectWidget super.widget, {
     this.floating = false,
-  }) : assert(floating != null);
+  });
 
   final bool floating;
 
@@ -346,8 +350,7 @@ abstract class _SliverPersistentHeaderRenderObjectWidget extends RenderObjectWid
   const _SliverPersistentHeaderRenderObjectWidget({
     required this.delegate,
     this.floating = false,
-  }) : assert(delegate != null),
-       assert(floating != null);
+  });
 
   final SliverPersistentHeaderDelegate delegate;
   final bool floating;
@@ -402,6 +405,11 @@ class _SliverScrollingPersistentHeader extends _SliverPersistentHeaderRenderObje
       stretchConfiguration: delegate.stretchConfiguration,
     );
   }
+
+  @override
+  void updateRenderObject(BuildContext context, covariant _RenderSliverScrollingPersistentHeaderForWidgets renderObject) {
+    renderObject.stretchConfiguration = delegate.stretchConfiguration;
+  }
 }
 
 class _RenderSliverScrollingPersistentHeaderForWidgets extends RenderSliverScrollingPersistentHeader
@@ -422,6 +430,13 @@ class _SliverPinnedPersistentHeader extends _SliverPersistentHeaderRenderObjectW
       stretchConfiguration: delegate.stretchConfiguration,
       showOnScreenConfiguration: delegate.showOnScreenConfiguration,
     );
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, covariant _RenderSliverPinnedPersistentHeaderForWidgets renderObject) {
+    renderObject
+      ..stretchConfiguration = delegate.stretchConfiguration
+      ..showOnScreenConfiguration = delegate.showOnScreenConfiguration;
   }
 }
 

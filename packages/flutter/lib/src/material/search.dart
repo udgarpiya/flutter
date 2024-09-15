@@ -2,6 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// @docImport 'action_buttons.dart';
+/// @docImport 'animated_icons.dart';
+/// @docImport 'icon_button.dart';
+/// @docImport 'list_tile.dart';
+library;
+
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'app_bar.dart';
@@ -41,6 +48,10 @@ import 'theme.dart';
 /// route created by this method is pushed to the nearest navigator to the
 /// given `context`. It can not be `null`.
 ///
+/// The `maintainState` argument is used to determine if the route should remain
+/// in memory when it is inactive (see [ModalRoute.maintainState] for more details].
+/// By default, `maintainState` is `false`.
+///
 /// The transition to the search page triggered by this method looks best if the
 /// screen triggering the transition contains an [AppBar] at the top and the
 /// transition is called from an [IconButton] that's part of [AppBar.actions].
@@ -61,14 +72,13 @@ Future<T?> showSearch<T>({
   required SearchDelegate<T> delegate,
   String? query = '',
   bool useRootNavigator = false,
+  bool maintainState = false,
 }) {
-  assert(delegate != null);
-  assert(context != null);
-  assert(useRootNavigator != null);
   delegate.query = query ?? delegate.query;
   delegate._currentBody = _SearchBody.suggestions;
   return Navigator.of(context, rootNavigator: useRootNavigator).push(_SearchPageRoute<T>(
     delegate: delegate,
+    maintainState: maintainState
   ));
 }
 
@@ -190,6 +200,12 @@ abstract class SearchDelegate<T> {
   ///  * [AppBar.leading], the intended use for the return value of this method.
   Widget? buildLeading(BuildContext context);
 
+  /// {@macro flutter.material.appbar.automaticallyImplyLeading}
+  bool? automaticallyImplyLeading;
+
+  /// {@macro flutter.material.appbar.leadingWidth}
+  double? leadingWidth;
+
   /// Widgets to display after the search query in the [AppBar].
   ///
   /// If the [query] is not empty, this should typically contain a button to
@@ -213,6 +229,15 @@ abstract class SearchDelegate<T> {
   ///
   PreferredSizeWidget? buildBottom(BuildContext context) => null;
 
+  /// Widget to display a flexible space in the [AppBar].
+  ///
+  /// Returns null by default, i.e. a flexible space widget is not included.
+  ///
+  /// See also:
+  ///
+  ///  * [AppBar.flexibleSpace], the intended use for the return value of this method.
+  Widget? buildFlexibleSpace(BuildContext context) => null;
+
   /// The theme used to configure the search page.
   ///
   /// The returned [ThemeData] will be used to wrap the entire search page,
@@ -230,16 +255,17 @@ abstract class SearchDelegate<T> {
   ///  * [InputDecorationTheme], which configures the appearance of the search
   ///    text field.
   ThemeData appBarTheme(BuildContext context) {
-    assert(context != null);
     final ThemeData theme = Theme.of(context);
     final ColorScheme colorScheme = theme.colorScheme;
-    assert(theme != null);
     return theme.copyWith(
       appBarTheme: AppBarTheme(
-        brightness: colorScheme.brightness,
+        systemOverlayStyle: colorScheme.brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
         backgroundColor: colorScheme.brightness == Brightness.dark ? Colors.grey[900] : Colors.white,
         iconTheme: theme.primaryIconTheme.copyWith(color: Colors.grey),
-        textTheme: theme.textTheme,
+        titleTextStyle: theme.textTheme.titleLarge,
+        toolbarTextStyle: theme.textTheme.bodyMedium,
       ),
       inputDecorationTheme: searchFieldDecorationTheme ??
           InputDecorationTheme(
@@ -261,7 +287,6 @@ abstract class SearchDelegate<T> {
   ///
   /// Setting the query string programmatically moves the cursor to the end of the text field.
   set query(String value) {
-    assert(query != null);
     _queryTextController.text = value;
     if (_queryTextController.text.isNotEmpty) {
       _queryTextController.selection = TextSelection.fromPosition(TextPosition(offset: _queryTextController.text.length));
@@ -370,6 +395,15 @@ abstract class SearchDelegate<T> {
   }
 
   _SearchPageRoute<T>? _route;
+
+  /// Releases the resources.
+  @mustCallSuper
+  void dispose() {
+    _currentBodyNotifier.dispose();
+    _focusNode?.dispose();
+    _queryTextController.dispose();
+    _proxyAnimation.parent = null;
+  }
 }
 
 /// Describes the body that is currently shown under the [AppBar] in the
@@ -389,7 +423,8 @@ enum _SearchBody {
 class _SearchPageRoute<T> extends PageRoute<T> {
   _SearchPageRoute({
     required this.delegate,
-  }) : assert(delegate != null) {
+    required this.maintainState,
+  }) {
     assert(
       delegate._route == null,
       'The ${delegate.runtimeType} instance is currently used by another active '
@@ -402,6 +437,9 @@ class _SearchPageRoute<T> extends PageRoute<T> {
   final SearchDelegate<T> delegate;
 
   @override
+  final bool maintainState;
+
+  @override
   Color? get barrierColor => null;
 
   @override
@@ -409,9 +447,6 @@ class _SearchPageRoute<T> extends PageRoute<T> {
 
   @override
   Duration get transitionDuration => const Duration(milliseconds: 300);
-
-  @override
-  bool get maintainState => false;
 
   @override
   Widget buildTransitions(
@@ -493,7 +528,7 @@ class _SearchPageState<T> extends State<_SearchPage<T>> {
   }
 
   void _onAnimationStatusChanged(AnimationStatus status) {
-    if (status != AnimationStatus.completed) {
+    if (!status.isCompleted) {
       return;
     }
     widget.animation.removeStatusListener(_onAnimationStatusChanged);
@@ -540,19 +575,17 @@ class _SearchPageState<T> extends State<_SearchPage<T>> {
     final String searchFieldLabel = widget.delegate.searchFieldLabel
       ?? MaterialLocalizations.of(context).searchFieldLabel;
     Widget? body;
-    switch(widget.delegate._currentBody) {
+    switch (widget.delegate._currentBody) {
       case _SearchBody.suggestions:
         body = KeyedSubtree(
           key: const ValueKey<_SearchBody>(_SearchBody.suggestions),
           child: widget.delegate.buildSuggestions(context),
         );
-        break;
       case _SearchBody.results:
         body = KeyedSubtree(
           key: const ValueKey<_SearchBody>(_SearchBody.results),
           child: widget.delegate.buildResults(context),
         );
-        break;
       case null:
         break;
     }
@@ -562,7 +595,6 @@ class _SearchPageState<T> extends State<_SearchPage<T>> {
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
         routeName = '';
-        break;
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
@@ -579,6 +611,8 @@ class _SearchPageState<T> extends State<_SearchPage<T>> {
         data: theme,
         child: Scaffold(
           appBar: AppBar(
+            leadingWidth: widget.delegate.leadingWidth,
+            automaticallyImplyLeading: widget.delegate.automaticallyImplyLeading ?? true,
             leading: widget.delegate.buildLeading(context),
             title: TextField(
               controller: widget.delegate._queryTextController,
@@ -586,11 +620,10 @@ class _SearchPageState<T> extends State<_SearchPage<T>> {
               style: widget.delegate.searchFieldStyle ?? theme.textTheme.titleLarge,
               textInputAction: widget.delegate.textInputAction,
               keyboardType: widget.delegate.keyboardType,
-              onSubmitted: (String _) {
-                widget.delegate.showResults(context);
-              },
+              onSubmitted: (String _) => widget.delegate.showResults(context),
               decoration: InputDecoration(hintText: searchFieldLabel),
             ),
+            flexibleSpace: widget.delegate.buildFlexibleSpace(context),
             actions: widget.delegate.buildActions(context),
             bottom: widget.delegate.buildBottom(context),
           ),

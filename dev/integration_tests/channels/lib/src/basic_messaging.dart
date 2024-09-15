@@ -32,13 +32,11 @@ class ExtendedStandardMessageCodec extends StandardMessageCodec {
 
   @override
   dynamic readValueOfType(int type, ReadBuffer buffer) {
-    switch (type) {
-    case _dateTime:
-      return DateTime.fromMillisecondsSinceEpoch(buffer.getInt64());
-    case _pair:
-      return Pair(readValue(buffer), readValue(buffer));
-    default: return super.readValueOfType(type, buffer);
-    }
+    return switch (type) {
+      _dateTime => DateTime.fromMillisecondsSinceEpoch(buffer.getInt64()),
+      _pair => Pair(readValue(buffer), readValue(buffer)),
+      _ => super.readValueOfType(type, buffer),
+    };
   }
 }
 
@@ -107,7 +105,7 @@ Future<void> _basicBackgroundStandardEchoMain(List<Object> args) async {
 Future<TestStepResult> basicBackgroundStandardEcho(Object message) async {
   final ReceivePort receivePort = ReceivePort();
   Isolate.spawn(_basicBackgroundStandardEchoMain, <Object>[
-    ServicesBinding.instance.rootIsolateToken!,
+    ServicesBinding.rootIsolateToken!,
     message,
     receivePort.sendPort,
   ]);

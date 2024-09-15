@@ -120,6 +120,12 @@ void main() {
     expect(output, equals(expectedColors));
   });
 
+  test('HSVColor.lerp identical a,b', () {
+    expect(HSVColor.lerp(null, null, 0), null);
+    const HSVColor color = HSVColor.fromAHSV(1.0, 0.0, 1.0, 1.0);
+    expect(identical(HSVColor.lerp(color, color, 0.5), color), true);
+  });
+
   test('HSVColor lerps hue correctly.', () {
     final List<Color> output = <Color>[];
     const HSVColor startColor = HSVColor.fromAHSV(1.0, 0.0, 1.0, 1.0);
@@ -315,6 +321,12 @@ void main() {
     expect(output, equals(expectedColors));
   });
 
+  test('HSLColor.lerp identical a,b', () {
+    expect(HSLColor.lerp(null, null, 0), null);
+    const HSLColor color = HSLColor.fromAHSL(1.0, 0.0, 0.5, 0.5);
+    expect(identical(HSLColor.lerp(color, color, 0.5), color), true);
+  });
+
   test('HSLColor lerps hue correctly.', () {
     final List<Color> output = <Color>[];
     const HSLColor startColor = HSLColor.fromAHSL(1.0, 0.0, 0.5, 0.5);
@@ -431,24 +443,30 @@ void main() {
     const ColorSwatch<int> swatchB = ColorSwatch<int>(0xFFFFFFFF, <int, Color>{1: Color(0xFFFFFFFF)});
     expect(
       ColorSwatch.lerp(swatchA, swatchB, 0.0),
-      const ColorSwatch<int>(0x00000000, <int, Color>{1: Color(0x00000000)}),
+      isSameColorAs(const ColorSwatch<int>(0x00000000, <int, Color>{1: Color(0x00000000)})),
     );
     expect(
       ColorSwatch.lerp(swatchA, swatchB, 0.5),
-      const ColorSwatch<int>(0x7F7F7F7F, <int, Color>{1: Color(0x7F7F7F7F)}),
+      isSameColorAs(const ColorSwatch<int>(0x7F7F7F7F, <int, Color>{1: Color(0x7F7F7F7F)})),
     );
     expect(
       ColorSwatch.lerp(swatchA, swatchB, 1.0),
-      const ColorSwatch<int>(0xFFFFFFFF, <int, Color>{1: Color(0xFFFFFFFF)}),
+      isSameColorAs(const ColorSwatch<int>(0xFFFFFFFF, <int, Color>{1: Color(0xFFFFFFFF)})),
     );
     expect(
       ColorSwatch.lerp(swatchA, swatchB, -0.1),
-      const ColorSwatch<int>(0x00000000, <int, Color>{1: Color(0x00000000)}),
+      isSameColorAs(const ColorSwatch<int>(0x00000000, <int, Color>{1: Color(0x00000000)})),
     );
     expect(
       ColorSwatch.lerp(swatchA, swatchB, 1.1),
-      const ColorSwatch<int>(0xFFFFFFFF, <int, Color>{1: Color(0xFFFFFFFF)}),
+      isSameColorAs(const ColorSwatch<int>(0xFFFFFFFF, <int, Color>{1: Color(0xFFFFFFFF)})),
     );
+  });
+
+  test('ColorSwatch.lerp identical a,b', () {
+    expect(ColorSwatch.lerp<Object?>(null, null, 0), null);
+    const ColorSwatch<int> color = ColorSwatch<int>(0x00000000, <int, Color>{1: Color(0x00000000)});
+    expect(identical(ColorSwatch.lerp(color, color, 0.5), color), true);
   });
 
   test('ColorDiagnosticsProperty includes valueProperties in JSON', () {

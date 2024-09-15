@@ -5,6 +5,7 @@
 // This file is run as part of a reduced test set in CI on Mac and Windows
 // machines.
 @Tags(<String>['reduced-test-set'])
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,7 +56,7 @@ void main() {
     );
 
     expect(side1.toString(), equals('BorderSide'));
-    expect(side2.toString(), equals('BorderSide(color: Color(0xff00ffff), width: 2.0)'));
+    expect(side2.toString(), equals('BorderSide(color: ${const Color(0xff00ffff)}, width: 2.0)'));
   });
 
   test('Border control test', () {
@@ -110,6 +111,18 @@ void main() {
     expect(shadowList, equals(<BoxShadow>[shadow4, shadow1.scale(0.5)]));
   });
 
+  test('BoxShadow.lerp identical a,b', () {
+    expect(BoxShadow.lerp(null, null, 0), null);
+    const BoxShadow border = BoxShadow();
+    expect(identical(BoxShadow.lerp(border, border, 0.5), border), true);
+  });
+
+  test('BoxShadowList.lerp identical a,b', () {
+    expect(BoxShadow.lerpList(null, null, 0), null);
+    const List<BoxShadow> border = <BoxShadow>[BoxShadow()];
+    expect(identical(BoxShadow.lerpList(border, border, 0.5), border), true);
+  });
+
   test('BoxShadow BlurStyle test', () {
     const BoxShadow shadow1 = BoxShadow(blurRadius: 4.0);
     const BoxShadow shadow2 = BoxShadow(blurRadius: 4.0, blurStyle: BlurStyle.outer);
@@ -143,8 +156,8 @@ void main() {
   });
 
   test('BoxShadow toString test', () {
-    expect(const BoxShadow(blurRadius: 4.0).toString(), equals('BoxShadow(Color(0xff000000), Offset(0.0, 0.0), 4.0, 0.0, BlurStyle.normal)'));
-    expect(const BoxShadow(blurRadius: 4.0, blurStyle: BlurStyle.solid).toString(), equals('BoxShadow(Color(0xff000000), Offset(0.0, 0.0), 4.0, 0.0, BlurStyle.solid)'));
+    expect(const BoxShadow(blurRadius: 4.0).toString(), equals('BoxShadow(${const Color(0xff000000)}, Offset(0.0, 0.0), 4.0, 0.0, BlurStyle.normal)'));
+    expect(const BoxShadow(blurRadius: 4.0, blurStyle: BlurStyle.solid).toString(), equals('BoxShadow(${const Color(0xff000000)}, Offset(0.0, 0.0), 4.0, 0.0, BlurStyle.solid)'));
   });
 
   testWidgets('BoxShadow BoxStyle.solid', (WidgetTester tester) async {

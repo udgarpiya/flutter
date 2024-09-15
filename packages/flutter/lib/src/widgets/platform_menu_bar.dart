@@ -45,10 +45,23 @@ class ShortcutSerialization {
   /// Creates a [ShortcutSerialization] representing a single character.
   ///
   /// This is used by a [CharacterActivator] to serialize itself.
-  ShortcutSerialization.character(String character)
-      : _internal = <String, Object?>{_kShortcutCharacter: character},
+  ShortcutSerialization.character(String character, {
+    bool alt = false,
+    bool control = false,
+    bool meta = false,
+  })  : assert(character.length == 1),
         _character = character,
-        assert(character.length == 1);
+        _trigger = null,
+        _alt = alt,
+        _control = control,
+        _meta = meta,
+        _shift = null,
+        _internal = <String, Object?>{
+          _kShortcutCharacter: character,
+          _kShortcutModifiers: (control ? _shortcutModifierControl : 0) |
+              (alt ? _shortcutModifierAlt : 0) |
+              (meta ? _shortcutModifierMeta : 0),
+        };
 
   /// Creates a [ShortcutSerialization] representing a specific
   /// [LogicalKeyboardKey] and modifiers.
@@ -56,14 +69,11 @@ class ShortcutSerialization {
   /// This is used by a [SingleActivator] to serialize itself.
   ShortcutSerialization.modifier(
     LogicalKeyboardKey trigger, {
-    bool control = false,
-    bool shift = false,
     bool alt = false,
+    bool control = false,
     bool meta = false,
-  })  : assert(trigger != LogicalKeyboardKey.shift &&
-               trigger != LogicalKeyboardKey.shiftLeft &&
-               trigger != LogicalKeyboardKey.shiftRight &&
-               trigger != LogicalKeyboardKey.alt &&
+    bool shift = false,
+  })  : assert(trigger != LogicalKeyboardKey.alt &&
                trigger != LogicalKeyboardKey.altLeft &&
                trigger != LogicalKeyboardKey.altRight &&
                trigger != LogicalKeyboardKey.control &&
@@ -71,52 +81,64 @@ class ShortcutSerialization {
                trigger != LogicalKeyboardKey.controlRight &&
                trigger != LogicalKeyboardKey.meta &&
                trigger != LogicalKeyboardKey.metaLeft &&
-               trigger != LogicalKeyboardKey.metaRight,
+               trigger != LogicalKeyboardKey.metaRight &&
+               trigger != LogicalKeyboardKey.shift &&
+               trigger != LogicalKeyboardKey.shiftLeft &&
+               trigger != LogicalKeyboardKey.shiftRight,
                'Specifying a modifier key as a trigger is not allowed. '
                'Use provided boolean parameters instead.'),
         _trigger = trigger,
-        _control = control,
-        _shift = shift,
+        _character = null,
         _alt = alt,
+        _control = control,
         _meta = meta,
+        _shift = shift,
         _internal = <String, Object?>{
           _kShortcutTrigger: trigger.keyId,
-          _kShortcutModifiers: (control ? _shortcutModifierControl : 0) |
-              (alt ? _shortcutModifierAlt : 0) |
-              (shift ? _shortcutModifierShift : 0) |
-              (meta ? _shortcutModifierMeta : 0),
+          _kShortcutModifiers: (alt ? _shortcutModifierAlt : 0) |
+            (control ? _shortcutModifierControl : 0) |
+            (meta ? _shortcutModifierMeta : 0) |
+            (shift ? _shortcutModifierShift : 0),
         };
 
   final Map<String, Object?> _internal;
 
   /// The keyboard key that triggers this shortcut, if any.
   LogicalKeyboardKey? get trigger => _trigger;
-  LogicalKeyboardKey? _trigger;
+  final LogicalKeyboardKey? _trigger;
 
   /// The character that triggers this shortcut, if any.
   String? get character => _character;
-  String? _character;
-
-  /// If this shortcut has a [trigger], this indicates whether or not the
-  /// control modifier needs to be down or not.
-  bool? get control => _control;
-  bool? _control;
-
-  /// If this shortcut has a [trigger], this indicates whether or not the
-  /// shift modifier needs to be down or not.
-  bool? get shift => _shift;
-  bool? _shift;
+  final String? _character;
 
   /// If this shortcut has a [trigger], this indicates whether or not the
   /// alt modifier needs to be down or not.
   bool? get alt => _alt;
-  bool? _alt;
+  final bool? _alt;
+
+  /// If this shortcut has a [trigger], this indicates whether or not the
+  /// control modifier needs to be down or not.
+  bool? get control => _control;
+  final bool? _control;
 
   /// If this shortcut has a [trigger], this indicates whether or not the meta
   /// (also known as the Windows or Command key) modifier needs to be down or
   /// not.
   bool? get meta => _meta;
-  bool? _meta;
+  final bool? _meta;
+
+  /// If this shortcut has a [trigger], this indicates whether or not the
+  /// shift modifier needs to be down or not.
+  bool? get shift => _shift;
+  final bool? _shift;
+
+  /// The bit mask for the [LogicalKeyboardKey.alt] key (or it's left/right
+  /// equivalents) being down.
+  static const int _shortcutModifierAlt = 1 << 2;
+
+  /// The bit mask for the [LogicalKeyboardKey.control] key (or it's left/right
+  /// equivalents) being down.
+  static const int _shortcutModifierControl = 1 << 3;
 
   /// The bit mask for the [LogicalKeyboardKey.meta] key (or it's left/right
   /// equivalents) being down.
@@ -125,14 +147,6 @@ class ShortcutSerialization {
   /// The bit mask for the [LogicalKeyboardKey.shift] key (or it's left/right
   /// equivalents) being down.
   static const int _shortcutModifierShift = 1 << 1;
-
-  /// The bit mask for the [LogicalKeyboardKey.alt] key (or it's left/right
-  /// equivalents) being down.
-  static const int _shortcutModifierAlt = 1 << 2;
-
-  /// The bit mask for the [LogicalKeyboardKey.alt] key (or it's left/right
-  /// equivalents) being down.
-  static const int _shortcutModifierControl = 1 << 3;
 
   /// Converts the internal representation to the format needed for a
   /// [PlatformMenuItem] to include it in its serialized form for sending to the
@@ -424,27 +438,12 @@ class PlatformMenuBar extends StatefulWidget with DiagnosticableTreeMixin {
     super.key,
     required this.menus,
     this.child,
-    @Deprecated(
-      'Use the child attribute instead. '
-      'This feature was deprecated after v3.1.0-0.0.pre.'
-    )
-    this.body,
-  }) : assert(body == null || child == null,
-              'The body argument is deprecated, and only one of body or child may be used.');
+  });
 
   /// The widget below this widget in the tree.
   ///
   /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget? child;
-
-  /// The widget below this widget in the tree.
-  ///
-  /// This attribute is deprecated, use [child] instead.
-  @Deprecated(
-    'Use the child attribute instead. '
-    'This feature was deprecated after v3.1.0-0.0.pre.'
-  )
-  final Widget? body;
 
   /// The list of menu items that are the top level children of the
   /// [PlatformMenuBar].
@@ -516,7 +515,7 @@ class _PlatformMenuBarState extends State<PlatformMenuBar> {
   Widget build(BuildContext context) {
     // PlatformMenuBar is really about managing the platform menu bar, and
     // doesn't do any rendering or event handling in Flutter.
-    return widget.child ?? widget.body ?? const SizedBox();
+    return widget.child ?? const SizedBox();
   }
 }
 
@@ -667,22 +666,12 @@ class PlatformMenuItemGroup extends PlatformMenuItem {
     PlatformMenuDelegate delegate, {
     required MenuItemSerializableIdGenerator getId,
   }) {
-    final List<Map<String, Object?>> result = <Map<String, Object?>>[];
-    result.add(<String, Object?>{
-      _kIdKey: getId(group),
-      _kIsDividerKey: true,
-    });
-    for (final PlatformMenuItem item in group.members) {
-      result.addAll(item.toChannelRepresentation(
-        delegate,
-        getId: getId,
-      ));
-    }
-    result.add(<String, Object?>{
-      _kIdKey: getId(group),
-      _kIsDividerKey: true,
-    });
-    return result;
+    return <Map<String, Object?>>[
+      <String, Object?>{_kIdKey: getId(group), _kIsDividerKey: true},
+      for (final PlatformMenuItem item in group.members)
+        ...item.toChannelRepresentation(delegate, getId: getId),
+      <String, Object?>{_kIdKey: getId(group), _kIsDividerKey: true},
+    ];
   }
 
   @override
@@ -724,7 +713,8 @@ class PlatformMenuItem with Diagnosticable {
   /// An optional callback that is called when this [PlatformMenuItem] is
   /// selected.
   ///
-  /// If unset, this menu item will be disabled.
+  /// At most one of [onSelected] and [onSelectedIntent] may be set. If neither
+  /// field is set, this menu item will be disabled.
   final VoidCallback? onSelected;
 
   /// Returns a callback, if any, to be invoked if the platform menu receives a
@@ -746,7 +736,8 @@ class PlatformMenuItem with Diagnosticable {
   /// An optional intent that is invoked when this [PlatformMenuItem] is
   /// selected.
   ///
-  /// If unset, this menu item will be disabled.
+  /// At most one of [onSelected] and [onSelectedIntent] may be set. If neither
+  /// field is set, this menu item will be disabled.
   final Intent? onSelectedIntent;
 
   /// Returns all descendant [PlatformMenuItem]s of this item.
@@ -791,7 +782,7 @@ class PlatformMenuItem with Diagnosticable {
     return <String, Object?>{
       _kIdKey: getId(item),
       _kLabelKey: item.label,
-      _kEnabledKey: item.onSelected != null,
+      _kEnabledKey: item.onSelected != null || item.onSelectedIntent != null,
       if (shortcut != null)...shortcut.serializeForMenu().toChannelRepresentation(),
     };
   }
@@ -940,7 +931,7 @@ enum PlatformProvidedMenuItemType {
   ///
   /// On macOS, this is the `terminate` default menu.
   ///
-  /// This menu item will simply exit the application when activated.
+  /// This menu item will exit the application when activated.
   quit,
 
   /// The system provided "Services" submenu.

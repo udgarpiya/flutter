@@ -10,6 +10,7 @@ import 'dart:typed_data';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vector_math/vector_math_64.dart' show Matrix3;
 
 /// Class that makes it easy to mock common toStringDeep behavior.
 class _MockToStringDeep {
@@ -193,6 +194,26 @@ void main() {
     );
   });
 
+  test('equalsIgnoringHashCodes - wrong line', () {
+    TestFailure? failure;
+    try {
+      expect(
+        '1\n2\n3\n4\n5\n6\n7\n8\n9\n10',
+        equalsIgnoringHashCodes('1\n2\n3\n4\n5\n6\na\n8\n9\n10'),
+      );
+    } on TestFailure catch (e) {
+      failure = e;
+    }
+
+    expect(failure, isNotNull);
+    if (failure != null) {
+      final String? message = failure.message;
+      expect(message, contains('Lines 7 differed'));
+      expect(message, contains("'a'"));
+      expect(message, contains("'7'"));
+    }
+  });
+
   test('moreOrLessEquals', () {
     expect(0.0, moreOrLessEquals(1e-11));
     expect(1e-11, moreOrLessEquals(0.0));
@@ -214,6 +235,9 @@ void main() {
 
     expect(11.0, moreOrLessEquals(-11.0, epsilon: 100.0));
     expect(-11.0, moreOrLessEquals(11.0, epsilon: 100.0));
+
+    expect(0, moreOrLessEquals(0.0));
+    expect(0.0, moreOrLessEquals(0));
   });
 
   test('matrixMoreOrLessEquals', () {
@@ -244,6 +268,35 @@ void main() {
         0, -2, 0, 0,
         0,  0, 1, 0,
         0,  0, 0, 1,
+      ])))
+    );
+  });
+
+  test('matrix3MoreOrLessEquals', () {
+    expect(
+      Matrix3.rotationZ(math.pi),
+      matrix3MoreOrLessEquals(Matrix3.fromList(<double>[
+       -1,  0, 0,
+        0, -1, 0,
+        0,  0, 1,
+      ]))
+    );
+
+    expect(
+      Matrix3.rotationZ(math.pi),
+      matrix3MoreOrLessEquals(Matrix3.fromList(<double>[
+       -2,  0, 0,
+        0, -2, 0,
+        0,  0, 1,
+      ]), epsilon: 2)
+    );
+
+    expect(
+      Matrix3.rotationZ(math.pi),
+      isNot(matrix3MoreOrLessEquals(Matrix3.fromList(<double>[
+       -2,  0, 0,
+        0, -2, 0,
+        0,  0, 1,
       ])))
     );
   });
@@ -323,6 +376,16 @@ void main() {
     expect(
       const _CustomColor(0xFF123456),
       isSameColorAs(const _CustomColor(0xFF123456, isEqual: false)),
+    );
+
+    expect(
+      const Color(0x00000000),
+      isNot(isSameColorAs(const Color(0x00000002))),
+    );
+
+    expect(
+      const Color(0x00000000),
+      isSameColorAs(const Color(0x00000002), threshold: 0.008),
     );
   });
 
@@ -437,6 +500,14 @@ void main() {
         expect(comparator.imageBytes, equals(<int>[1, 2]));
         expect(comparator.golden, Uri.parse('foo.png'));
       });
+
+      testWidgets('future nullable list of integers',
+          (WidgetTester tester) async {
+        await expectLater(Future<List<int>?>.value(<int>[1, 2]), matchesGoldenFile('foo.png'));
+        expect(comparator.invocation, _ComparatorInvocation.compare);
+        expect(comparator.imageBytes, equals(<int>[1, 2]));
+        expect(comparator.golden, Uri.parse('foo.png'));
+      });
     });
 
     group('does not match', () {
@@ -485,8 +556,8 @@ void main() {
       });
 
       testWidgets('if finder finds multiple widgets', (WidgetTester tester) async {
-        await tester.pumpWidget(boilerplate(Column(
-          children: const <Widget>[Text('hello'), Text('world')],
+        await tester.pumpWidget(boilerplate(const Column(
+          children: <Widget>[Text('hello'), Text('world')],
         )));
         final Finder finder = find.byType(Text);
         await expectLater(
@@ -613,15 +684,16 @@ void main() {
       int actions = 0;
       int flags = 0;
       const CustomSemanticsAction action = CustomSemanticsAction(label: 'test');
-      for (final int index in SemanticsAction.values.keys) {
-        actions |= index;
+      for (final SemanticsAction action in SemanticsAction.values) {
+        actions |= action.index;
       }
-      for (final int index in SemanticsFlag.values.keys) {
-        flags |= index;
+      for (final SemanticsFlag flag in SemanticsFlag.values) {
+        flags |= flag.index;
       }
       final SemanticsData data = SemanticsData(
         flags: flags,
         actions: actions,
+        identifier: 'i',
         attributedLabel: AttributedString('a'),
         attributedIncreasedValue: AttributedString('b'),
         attributedValue: AttributedString('c'),
@@ -642,6 +714,8 @@ void main() {
         customSemanticsActionIds: <int>[CustomSemanticsAction.getIdentifier(action)],
         currentValueLength: 10,
         maxValueLength: 15,
+        headingLevel: 0,
+        linkUrl: Uri(path: 'l'),
       );
       final _FakeSemanticsNode node = _FakeSemanticsNode(data);
 
@@ -680,6 +754,8 @@ void main() {
          hasToggledState: true,
          isToggled: true,
          hasImplicitScrolling: true,
+         hasExpandedState: true,
+         isExpanded: true,
          /* Actions */
          hasTapAction: true,
          hasLongPressAction: true,
@@ -702,6 +778,7 @@ void main() {
          hasDidGainAccessibilityFocusAction: true,
          hasDidLoseAccessibilityFocusAction: true,
          hasDismissAction: true,
+         hasFocusAction: true,
          customActions: <CustomSemanticsAction>[action],
       ));
     });
@@ -737,7 +814,6 @@ void main() {
 
     testWidgets('failure does not throw unexpected errors', (WidgetTester tester) async {
       final SemanticsHandle handle = tester.ensureSemantics();
-      addTearDown(() => handle.dispose());
 
       const Key key = Key('semantics');
       await tester.pumpWidget(Semantics(
@@ -748,6 +824,7 @@ void main() {
         link: true,
         onTap: () { },
         onLongPress: () { },
+        identifier: 'ident',
         label: 'foo',
         hint: 'bar',
         value: 'baz',
@@ -789,13 +866,13 @@ void main() {
       );
 
       expect(failedExpectation, throwsA(isA<TestFailure>()));
+      handle.dispose();
     });
   });
 
   group('containsSemantics', () {
     testWidgets('matches SemanticsData', (WidgetTester tester) async {
       final SemanticsHandle handle = tester.ensureSemantics();
-      addTearDown(() => handle.dispose());
 
       const Key key = Key('semantics');
       await tester.pumpWidget(Semantics(
@@ -889,21 +966,23 @@ void main() {
         )),
         reason: 'onTapHint "scans" should not have matched "scan".',
       );
+      handle.dispose();
     });
 
     testWidgets('can match all semantics flags and actions enabled', (WidgetTester tester) async {
       int actions = 0;
       int flags = 0;
       const CustomSemanticsAction action = CustomSemanticsAction(label: 'test');
-      for (final int index in SemanticsAction.values.keys) {
-        actions |= index;
+      for (final SemanticsAction action in SemanticsAction.values) {
+        actions |= action.index;
       }
-      for (final int index in SemanticsFlag.values.keys) {
-        flags |= index;
+      for (final SemanticsFlag flag in SemanticsFlag.values) {
+        flags |= flag.index;
       }
       final SemanticsData data = SemanticsData(
         flags: flags,
         actions: actions,
+        identifier: 'i',
         attributedLabel: AttributedString('a'),
         attributedIncreasedValue: AttributedString('b'),
         attributedValue: AttributedString('c'),
@@ -924,6 +1003,8 @@ void main() {
         customSemanticsActionIds: <int>[CustomSemanticsAction.getIdentifier(action)],
         currentValueLength: 10,
         maxValueLength: 15,
+        headingLevel: 0,
+        linkUrl: Uri(path: 'l'),
       );
       final _FakeSemanticsNode node = _FakeSemanticsNode(data);
 
@@ -963,6 +1044,8 @@ void main() {
           hasToggledState: true,
           isToggled: true,
           hasImplicitScrolling: true,
+          hasExpandedState: true,
+          isExpanded: true,
           /* Actions */
           hasTapAction: true,
           hasLongPressAction: true,
@@ -985,6 +1068,7 @@ void main() {
           hasDidGainAccessibilityFocusAction: true,
           hasDidLoseAccessibilityFocusAction: true,
           hasDismissAction: true,
+          hasFocusAction: true,
           customActions: <CustomSemanticsAction>[action],
         ),
       );
@@ -994,6 +1078,7 @@ void main() {
       final SemanticsData data = SemanticsData(
         flags: 0,
         actions: 0,
+        identifier: 'i',
         attributedLabel: AttributedString('a'),
         attributedIncreasedValue: AttributedString('b'),
         attributedValue: AttributedString('c'),
@@ -1013,6 +1098,8 @@ void main() {
         platformViewId: 105,
         currentValueLength: 10,
         maxValueLength: 15,
+        headingLevel: 0,
+        linkUrl: null,
       );
       final _FakeSemanticsNode node = _FakeSemanticsNode(data);
 
@@ -1052,6 +1139,8 @@ void main() {
           hasToggledState: false,
           isToggled: false,
           hasImplicitScrolling: false,
+          hasExpandedState: false,
+          isExpanded: false,
           /* Actions */
           hasTapAction: false,
           hasLongPressAction: false,
@@ -1074,6 +1163,7 @@ void main() {
           hasDidGainAccessibilityFocusAction: false,
           hasDidLoseAccessibilityFocusAction: false,
           hasDismissAction: false,
+          hasFocusAction: false,
         ),
       );
     });
@@ -1081,15 +1171,16 @@ void main() {
     testWidgets('only matches given flags and actions', (WidgetTester tester) async {
       int allActions = 0;
       int allFlags = 0;
-      for (final int index in SemanticsAction.values.keys) {
-        allActions |= index;
+      for (final SemanticsAction action in SemanticsAction.values) {
+        allActions |= action.index;
       }
-      for (final int index in SemanticsFlag.values.keys) {
-        allFlags |= index;
+      for (final SemanticsFlag flag in SemanticsFlag.values) {
+        allFlags |= flag.index;
       }
       final SemanticsData emptyData = SemanticsData(
         flags: 0,
         actions: 0,
+        identifier: 'i',
         attributedLabel: AttributedString('a'),
         attributedIncreasedValue: AttributedString('b'),
         attributedValue: AttributedString('c'),
@@ -1109,6 +1200,8 @@ void main() {
         platformViewId: 105,
         currentValueLength: 10,
         maxValueLength: 15,
+        headingLevel: 0,
+        linkUrl: null,
       );
       final _FakeSemanticsNode emptyNode = _FakeSemanticsNode(emptyData);
 
@@ -1116,6 +1209,7 @@ void main() {
       final SemanticsData fullData = SemanticsData(
         flags: allFlags,
         actions: allActions,
+        identifier: 'i',
         attributedLabel: AttributedString('a'),
         attributedIncreasedValue: AttributedString('b'),
         attributedValue: AttributedString('c'),
@@ -1136,6 +1230,8 @@ void main() {
         currentValueLength: 10,
         maxValueLength: 15,
         customSemanticsActionIds: <int>[CustomSemanticsAction.getIdentifier(action)],
+        headingLevel: 0,
+        linkUrl: Uri(path: 'l'),
       );
       final _FakeSemanticsNode fullNode = _FakeSemanticsNode(fullData);
 
@@ -1205,6 +1301,7 @@ void main() {
       final SemanticsData data = SemanticsData(
         flags: 0,
         actions: SemanticsAction.customAction.index,
+        identifier: 'i',
         attributedLabel: AttributedString('a'),
         attributedIncreasedValue: AttributedString('b'),
         attributedValue: AttributedString('c'),
@@ -1225,6 +1322,8 @@ void main() {
         currentValueLength: 10,
         maxValueLength: 15,
         customSemanticsActionIds: <int>[CustomSemanticsAction.getIdentifier(action)],
+        headingLevel: 0,
+        linkUrl: null,
       );
       final _FakeSemanticsNode node = _FakeSemanticsNode(data);
 
@@ -1233,7 +1332,6 @@ void main() {
 
     testWidgets('failure does not throw unexpected errors', (WidgetTester tester) async {
       final SemanticsHandle handle = tester.ensureSemantics();
-      addTearDown(() => handle.dispose());
 
       const Key key = Key('semantics');
       await tester.pumpWidget(Semantics(
@@ -1283,6 +1381,7 @@ void main() {
       );
 
       expect(failedExpectation, throwsA(isA<TestFailure>()));
+      handle.dispose();
     });
   });
 
@@ -1296,8 +1395,8 @@ void main() {
 
     testWidgets('succeeds when finds more then the specified count',
         (WidgetTester tester) async {
-      await tester.pumpWidget(boilerplate(Column(
-        children: const <Widget>[Text('1'), Text('2'), Text('3')],
+      await tester.pumpWidget(boilerplate(const Column(
+        children: <Widget>[Text('1'), Text('2'), Text('3')],
       )));
 
       expect(find.byType(Text), findsAtLeastNWidgets(2));
@@ -1305,8 +1404,8 @@ void main() {
 
     testWidgets('succeeds when finds the exact specified count',
         (WidgetTester tester) async {
-      await tester.pumpWidget(boilerplate(Column(
-        children: const <Widget>[Text('1'), Text('2')],
+      await tester.pumpWidget(boilerplate(const Column(
+        children: <Widget>[Text('1'), Text('2')],
       )));
 
       expect(find.byType(Text), findsAtLeastNWidgets(2));
@@ -1314,11 +1413,77 @@ void main() {
 
     testWidgets('fails when finds less then specified count',
         (WidgetTester tester) async {
-      await tester.pumpWidget(boilerplate(Column(
-        children: const <Widget>[Text('1'), Text('2')],
+      await tester.pumpWidget(boilerplate(const Column(
+        children: <Widget>[Text('1'), Text('2')],
       )));
 
       expect(find.byType(Text), isNot(findsAtLeastNWidgets(3)));
+    });
+  });
+
+  group('findsOneWidget', () {
+    testWidgets('finds exactly one widget', (WidgetTester tester) async {
+      await tester.pumpWidget(const Text('foo', textDirection: TextDirection.ltr));
+      expect(find.text('foo'), findsOneWidget);
+    });
+
+    testWidgets('fails with a descriptive message', (WidgetTester tester) async {
+      late TestFailure failure;
+      try {
+        expect(find.text('foo', skipOffstage: false), findsOneWidget);
+      } on TestFailure catch (e) {
+        failure = e;
+      }
+
+      expect(failure, isNotNull);
+      final String? message = failure.message;
+      expect(message, contains('Expected: exactly one matching candidate\n'));
+      expect(message, contains('Actual: _TextWidgetFinder:<Found 0 widgets with text "foo"'));
+      expect(message, contains('Which: means none were found but one was expected\n'));
+    });
+  });
+
+  group('findsNothing', () {
+    testWidgets('finds no widgets', (WidgetTester tester) async {
+      expect(find.text('foo'), findsNothing);
+    });
+
+    testWidgets('fails with a descriptive message', (WidgetTester tester) async {
+      await tester.pumpWidget(const Text('foo', textDirection: TextDirection.ltr));
+
+      late TestFailure failure;
+      try {
+        expect(find.text('foo', skipOffstage: false), findsNothing);
+      } on TestFailure catch (e) {
+        failure = e;
+      }
+
+      expect(failure, isNotNull);
+      final String? message = failure.message;
+
+      expect(message, contains('Expected: no matching candidates\n'));
+      expect(message, contains('Actual: _TextWidgetFinder:<Found 1 widget with text "foo"'));
+      expect(message, contains('Text("foo", textDirection: ltr, dependencies: [MediaQuery])'));
+      expect(message, contains('Which: means one was found but none were expected\n'));
+    });
+
+    testWidgets('fails with a descriptive message when skipping', (WidgetTester tester) async {
+      await tester.pumpWidget(const Text('foo', textDirection: TextDirection.ltr));
+
+      late TestFailure failure;
+      try {
+        expect(find.text('foo'), findsNothing);
+      } on TestFailure catch (e) {
+        failure = e;
+      }
+
+      expect(failure, isNotNull);
+      final String? message = failure.message;
+
+      expect(message, contains('Expected: no matching candidates\n'));
+      expect(message, contains('Actual: _TextWidgetFinder:<Found 1 widget with text "foo"'));
+      expect(message, contains('Text("foo", textDirection: ltr, dependencies: [MediaQuery])'));
+      expect(message, contains('Which: means one was found but none were expected\n'));
     });
   });
 }

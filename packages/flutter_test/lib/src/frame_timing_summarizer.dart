@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// @docImport 'package:flutter_driver/flutter_driver.dart';
+library;
+
 import 'dart:ui';
 
 /// The maximum amount of time considered safe to spend for a frame's build
@@ -22,7 +25,6 @@ class FrameTimingSummarizer {
     int? newGenGCCount,
     int? oldGenGCCount,
   }) {
-    assert(data != null);
     assert(data.isNotEmpty);
     final List<Duration> frameBuildTime = List<Duration>.unmodifiable(
       data.map<Duration>((FrameTiming datum) => datum.buildDuration),

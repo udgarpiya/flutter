@@ -60,7 +60,7 @@ class ExtendedReaderWriter: FlutterStandardReaderWriter {
 
 class MainFlutterWindow: NSWindow {
   override func awakeFromNib() {
-    let flutterViewController = FlutterViewController.init()
+    let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
@@ -98,6 +98,13 @@ class MainFlutterWindow: NSWindow {
         name: "std-method",
         binaryMessenger: registrar.messenger,
         codec: FlutterStandardMethodCodec(readerWriter: ExtendedReaderWriter())))
+
+    FlutterBasicMessageChannel(
+      name: "std-echo", binaryMessenger: registrar.messenger,
+      codec: FlutterStandardMessageCodec.sharedInstance()
+    ).setMessageHandler { message, reply in
+      reply(message)
+    }
 
     super.awakeFromNib()
   }

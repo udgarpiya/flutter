@@ -2,6 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// @docImport 'package:flutter/material.dart';
+/// @docImport 'package:flutter/rendering.dart';
+/// @docImport 'package:flutter/scheduler.dart';
+///
+/// @docImport 'binding.dart';
+/// @docImport 'widget_inspector.dart';
+library;
+
 import 'dart:collection';
 import 'dart:developer' show Timeline; // to disambiguate reference in dartdocs below
 
@@ -10,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'basic.dart';
 import 'framework.dart';
 import 'localizations.dart';
+import 'lookup_boundary.dart';
 import 'media_query.dart';
 import 'overlay.dart';
 import 'table.dart';
@@ -32,8 +41,8 @@ import 'table.dart';
 /// Combined with [debugPrintScheduleBuildForStacks], this lets you watch a
 /// widget's dirty/clean lifecycle.
 ///
-/// To get similar information but showing it on the timeline available from the
-/// Observatory rather than getting it in the console (where it can be
+/// To get similar information but showing it on the timeline available from
+/// Flutter DevTools rather than getting it in the console (where it can be
 /// overwhelming), consider [debugProfileBuildsEnabled].
 ///
 /// See also:
@@ -110,7 +119,7 @@ bool debugPrintGlobalKeyedWidgetLifecycle = false;
 /// performance. This data is omitted in profile builds.
 ///
 /// For more information about performance debugging in Flutter, see
-/// <https://flutter.dev/docs/perf/rendering>.
+/// <https://docs.flutter.dev/perf/ui-performance>.
 ///
 /// See also:
 ///
@@ -169,7 +178,6 @@ bool debugHighlightDeprecatedWidgets = false;
 Key? _firstNonUniqueKey(Iterable<Widget> widgets) {
   final Set<Key> keySet = HashSet<Key>();
   for (final Widget widget in widgets) {
-    assert(widget != null);
     if (widget.key == null) {
       continue;
     }
@@ -301,10 +309,9 @@ bool debugCheckHasMediaQuery(BuildContext context) {
         context.describeOwnershipChain('The ownership chain for the affected widget is'),
         ErrorHint(
           'No MediaQuery ancestor could be found starting from the context '
-          'that was passed to MediaQuery.of(). This can happen because you '
-          'have not added a WidgetsApp, CupertinoApp, or MaterialApp widget '
-          '(those widgets introduce a MediaQuery), or it can happen if the '
-          'context you use comes from a widget above those widgets.',
+          'that was passed to MediaQuery.of(). This can happen because the '
+          'context used is not a descendant of a View widget, which introduces '
+          'a MediaQuery.'
         ),
       ]);
     }
@@ -468,12 +475,17 @@ bool debugCheckHasWidgetsLocalizations(BuildContext context) {
 /// Does nothing if asserts are disabled. Always returns true.
 bool debugCheckHasOverlay(BuildContext context) {
   assert(() {
-    if (context.widget is! Overlay && context.findAncestorWidgetOfExactType<Overlay>() == null) {
+    if (LookupBoundary.findAncestorWidgetOfExactType<Overlay>(context) == null) {
+      final bool hiddenByBoundary = LookupBoundary.debugIsHidingAncestorWidgetOfExactType<Overlay>(context);
       throw FlutterError.fromParts(<DiagnosticsNode>[
-        ErrorSummary('No Overlay widget found.'),
+        ErrorSummary('No Overlay widget found${hiddenByBoundary ? ' within the closest LookupBoundary' : ''}.'),
+        if (hiddenByBoundary)
+          ErrorDescription(
+              'There is an ancestor Overlay widget, but it is hidden by a LookupBoundary.'
+          ),
         ErrorDescription(
           '${context.widget.runtimeType} widgets require an Overlay '
-          'widget ancestor.\n'
+          'widget ancestor within the closest LookupBoundary.\n'
           'An overlay lets widgets float on top of other widget children.',
         ),
         ErrorHint(

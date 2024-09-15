@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:ui' as ui show AppLifecycleState;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,7 +13,7 @@ void main() {
   testWidgets('SystemChrome overlay style test', (WidgetTester tester) async {
     final List<MethodCall> log = <MethodCall>[];
 
-    TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
       return null;
     });
@@ -70,7 +71,7 @@ void main() {
   test('setPreferredOrientations control test', () async {
     final List<MethodCall> log = <MethodCall>[];
 
-    TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
       return null;
     });
@@ -89,7 +90,7 @@ void main() {
   test('setApplicationSwitcherDescription control test', () async {
     final List<MethodCall> log = <MethodCall>[];
 
-    TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
       return null;
     });
@@ -108,7 +109,7 @@ void main() {
   test('setApplicationSwitcherDescription missing plugin', () async {
     final List<ByteData?> log = <ByteData>[];
 
-    TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMessageHandler('flutter/platform', (ByteData? message) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMessageHandler('flutter/platform', (ByteData? message) async {
       log.add(message);
       return null;
     });
@@ -120,27 +121,11 @@ void main() {
     expect(log, isNotEmpty);
   });
 
-  test('setEnabledSystemUIOverlays control test', () async {
-    final List<MethodCall> log = <MethodCall>[];
-
-    TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
-      log.add(methodCall);
-      return null;
-    });
-
-    await SystemChrome.setEnabledSystemUIOverlays(<SystemUiOverlay>[SystemUiOverlay.top]);
-
-    expect(log, hasLength(1));
-    expect(log.single, isMethodCall(
-      'SystemChrome.setEnabledSystemUIOverlays',
-      arguments: <String>['SystemUiOverlay.top'],
-    ));
-  });
 
   test('setEnabledSystemUIMode control test', () async {
     final List<MethodCall> log = <MethodCall>[];
 
-    TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
       return null;
     });
@@ -169,7 +154,7 @@ void main() {
   test('setEnabledSystemUIMode passes correct overlays for manual configuration', () async {
     final List<MethodCall> log = <MethodCall>[];
 
-    TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
       return null;
     });
@@ -186,7 +171,7 @@ void main() {
   test('setSystemUIChangeCallback control test', () async {
     final List<MethodCall> log = <MethodCall>[];
 
-    TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
       log.add(methodCall);
       return null;
     });
@@ -215,5 +200,32 @@ void main() {
       'systemNavigationBarIconBrightness: null, '
       'systemNavigationBarContrastEnforced: null})',
     );
+  });
+
+  testWidgets('SystemChrome handles detached lifecycle state', (WidgetTester tester) async {
+    final List<MethodCall> log = <MethodCall>[];
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (MethodCall methodCall) async {
+      log.add(methodCall);
+      return null;
+    });
+
+    const SystemUiOverlayStyle systemUiOverlayStyle = SystemUiOverlayStyle();
+    SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
+    await tester.idle();
+    expect(log.length, equals(1));
+
+    // Setting the same state should not send another message to the host.
+    SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
+    await tester.idle();
+    expect(log.length, equals(1));
+
+    // The state should be sent again if the app was detached.
+    SystemChrome.handleAppLifecycleStateChanged(ui.AppLifecycleState.detached);
+    await tester.idle();
+    SystemChrome.handleAppLifecycleStateChanged(ui.AppLifecycleState.resumed);
+    SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
+    await tester.idle();
+    expect(log.length, equals(2));
   });
 }

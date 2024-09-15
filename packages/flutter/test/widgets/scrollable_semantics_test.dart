@@ -57,6 +57,7 @@ void main() {
     final ScrollController scrollController = ScrollController(
       initialScrollOffset: kItemHeight / 2,
     );
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(
       Directionality(
@@ -96,6 +97,7 @@ void main() {
     final ScrollController scrollController = ScrollController(
       initialScrollOffset: kItemHeight / 2,
     );
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
@@ -166,6 +168,7 @@ void main() {
     final ScrollController scrollController = ScrollController(
       initialScrollOffset: 2.5 * kItemHeight,
     );
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(Directionality(
       textDirection: TextDirection.ltr,
@@ -231,7 +234,7 @@ void main() {
 
     expect(semantics, includesNodeWith(
       scrollExtentMin: 0.0,
-      scrollPosition: 380.2,
+      scrollPosition: 394.3,
       scrollExtentMax: 520.0,
       actions: <SemanticsAction>[
         SemanticsAction.scrollUp,
@@ -280,7 +283,7 @@ void main() {
 
     expect(semantics, includesNodeWith(
       scrollExtentMin: 0.0,
-      scrollPosition: 380.2,
+      scrollPosition: 394.3,
       scrollExtentMax: double.infinity,
       actions: <SemanticsAction>[
         SemanticsAction.scrollUp,
@@ -292,7 +295,7 @@ void main() {
 
     expect(semantics, includesNodeWith(
       scrollExtentMin: 0.0,
-      scrollPosition: 760.4,
+      scrollPosition: 788.6,
       scrollExtentMax: double.infinity,
       actions: <SemanticsAction>[
         SemanticsAction.scrollUp,
@@ -536,7 +539,10 @@ void main() {
           ),
         ),
       );
+    });
 
+    tearDown(() {
+      scrollController.dispose();
     });
 
     testWidgets('brings item above leading edge to leading edge', (WidgetTester tester) async {

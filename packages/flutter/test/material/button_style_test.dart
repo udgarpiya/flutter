@@ -14,27 +14,38 @@ void main() {
     expect(const ButtonStyle().hashCode, const ButtonStyle().copyWith().hashCode);
   });
 
+  test('ButtonStyle lerp special cases', () {
+    expect(ButtonStyle.lerp(null, null, 0), null);
+    const ButtonStyle data = ButtonStyle();
+    expect(identical(ButtonStyle.lerp(data, data, 0.5), data), true);
+  });
+
   test('ButtonStyle defaults', () {
     const ButtonStyle style = ButtonStyle();
-    expect(style.textStyle, null);
-    expect(style.backgroundColor, null);
-    expect(style.foregroundColor, null);
-    expect(style.overlayColor, null);
-    expect(style.shadowColor, null);
-    expect(style.surfaceTintColor, null);
-    expect(style.elevation, null);
-    expect(style.padding, null);
-    expect(style.minimumSize, null);
-    expect(style.fixedSize, null);
-    expect(style.maximumSize, null);
-    expect(style.iconSize, null);
-    expect(style.side, null);
-    expect(style.shape, null);
-    expect(style.mouseCursor, null);
-    expect(style.visualDensity, null);
-    expect(style.tapTargetSize, null);
-    expect(style.animationDuration, null);
-    expect(style.enableFeedback, null);
+    expect(style.textStyle, isNull);
+    expect(style.backgroundColor, isNull);
+    expect(style.foregroundColor, isNull);
+    expect(style.overlayColor, isNull);
+    expect(style.shadowColor, isNull);
+    expect(style.surfaceTintColor, isNull);
+    expect(style.elevation, isNull);
+    expect(style.padding, isNull);
+    expect(style.minimumSize, isNull);
+    expect(style.fixedSize, isNull);
+    expect(style.maximumSize, isNull);
+    expect(style.iconColor, isNull);
+    expect(style.iconSize, isNull);
+    expect(style.side, isNull);
+    expect(style.shape, isNull);
+    expect(style.mouseCursor, isNull);
+    expect(style.visualDensity, isNull);
+    expect(style.tapTargetSize, isNull);
+    expect(style.animationDuration, isNull);
+    expect(style.enableFeedback, isNull);
+    expect(style.alignment, isNull);
+    expect(style.splashFactory, isNull);
+    expect(style.backgroundBuilder, isNull);
+    expect(style.foregroundBuilder, isNull);
   });
 
   testWidgets('Default ButtonStyle debugFillProperties', (WidgetTester tester) async {
@@ -63,6 +74,7 @@ void main() {
       minimumSize: MaterialStatePropertyAll<Size>(Size(1.0, 2.0)),
       side: MaterialStatePropertyAll<BorderSide>(BorderSide(width: 4.0, color: Color(0xfffffff6))),
       maximumSize: MaterialStatePropertyAll<Size>(Size(100.0, 200.0)),
+      iconColor: MaterialStatePropertyAll<Color>(Color(0xfffffff6)),
       iconSize: MaterialStatePropertyAll<double>(48.1),
       shape: MaterialStatePropertyAll<OutlinedBorder>(StadiumBorder()),
       mouseCursor: MaterialStatePropertyAll<MouseCursor>(SystemMouseCursors.forbidden),
@@ -77,20 +89,21 @@ void main() {
       .toList();
 
     expect(description, <String>[
-      'textStyle: MaterialStatePropertyAll(TextStyle(inherit: true, size: 10.0))',
-      'backgroundColor: MaterialStatePropertyAll(Color(0xfffffff1))',
-      'foregroundColor: MaterialStatePropertyAll(Color(0xfffffff2))',
-      'overlayColor: MaterialStatePropertyAll(Color(0xfffffff3))',
-      'shadowColor: MaterialStatePropertyAll(Color(0xfffffff4))',
-      'surfaceTintColor: MaterialStatePropertyAll(Color(0xfffffff5))',
-      'elevation: MaterialStatePropertyAll(1.5)',
-      'padding: MaterialStatePropertyAll(EdgeInsets.all(1.0))',
-      'minimumSize: MaterialStatePropertyAll(Size(1.0, 2.0))',
-      'maximumSize: MaterialStatePropertyAll(Size(100.0, 200.0))',
-      'iconSize: MaterialStatePropertyAll(48.1)',
-      'side: MaterialStatePropertyAll(BorderSide(color: Color(0xfffffff6), width: 4.0))',
-      'shape: MaterialStatePropertyAll(StadiumBorder(BorderSide(width: 0.0, style: none)))',
-      'mouseCursor: MaterialStatePropertyAll(SystemMouseCursor(forbidden))',
+      'textStyle: WidgetStatePropertyAll(TextStyle(inherit: true, size: 10.0))',
+      'backgroundColor: WidgetStatePropertyAll(${const Color(0xfffffff1)})',
+      'foregroundColor: WidgetStatePropertyAll(${const Color(0xfffffff2)})',
+      'overlayColor: WidgetStatePropertyAll(${const Color(0xfffffff3)})',
+      'shadowColor: WidgetStatePropertyAll(${const Color(0xfffffff4)})',
+      'surfaceTintColor: WidgetStatePropertyAll(${const Color(0xfffffff5)})',
+      'elevation: WidgetStatePropertyAll(1.5)',
+      'padding: WidgetStatePropertyAll(EdgeInsets.all(1.0))',
+      'minimumSize: WidgetStatePropertyAll(Size(1.0, 2.0))',
+      'maximumSize: WidgetStatePropertyAll(Size(100.0, 200.0))',
+      'iconColor: WidgetStatePropertyAll(${const Color(0xfffffff6)})',
+      'iconSize: WidgetStatePropertyAll(48.1)',
+      'side: WidgetStatePropertyAll(BorderSide(color: ${const Color(0xfffffff6)}, width: 4.0))',
+      'shape: WidgetStatePropertyAll(StadiumBorder(BorderSide(width: 0.0, style: none)))',
+      'mouseCursor: WidgetStatePropertyAll(SystemMouseCursor(forbidden))',
       'tapTargetSize: shrinkWrap',
       'animationDuration: 0:00:01.000000',
       'enableFeedback: true',
@@ -109,6 +122,7 @@ void main() {
     const MaterialStateProperty<Size> minimumSize = MaterialStatePropertyAll<Size>(Size(1, 2));
     const MaterialStateProperty<Size> fixedSize = MaterialStatePropertyAll<Size>(Size(3, 4));
     const MaterialStateProperty<Size> maximumSize = MaterialStatePropertyAll<Size>(Size(5, 6));
+    const MaterialStateProperty<Color> iconColor = MaterialStatePropertyAll<Color>(Color(0xfffffff6));
     const MaterialStateProperty<double> iconSize = MaterialStatePropertyAll<double>(48.0);
     const MaterialStateProperty<BorderSide> side = MaterialStatePropertyAll<BorderSide>(BorderSide());
     const MaterialStateProperty<OutlinedBorder> shape = MaterialStatePropertyAll<OutlinedBorder>(StadiumBorder());
@@ -130,6 +144,7 @@ void main() {
       minimumSize: minimumSize,
       fixedSize: fixedSize,
       maximumSize: maximumSize,
+      iconColor: iconColor,
       iconSize: iconSize,
       side: side,
       shape: shape,
@@ -154,6 +169,7 @@ void main() {
         minimumSize: minimumSize,
         fixedSize: fixedSize,
         maximumSize: maximumSize,
+        iconColor: iconColor,
         iconSize: iconSize,
         side: side,
         shape: shape,

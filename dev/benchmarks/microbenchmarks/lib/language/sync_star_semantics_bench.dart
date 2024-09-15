@@ -9,7 +9,7 @@ import '../common.dart';
 const int _kNumIterations = 1000;
 const int _kNumWarmUp = 100;
 
-void main() {
+Future<void> execute() async {
   final List<String> words = 'Lorem Ipsum is simply dummy text of the printing and'
     " typesetting industry. Lorem Ipsum has been the industry's"
     ' standard dummy text ever since the 1500s, when an unknown'
@@ -83,28 +83,18 @@ Iterable<InlineSpanSemanticsInformation> combineSemanticsInfoSyncStar(List<Inlin
   String? workingLabel;
   for (final InlineSpanSemanticsInformation info in inputs) {
     if (info.requiresOwnNode) {
-      if (workingText != null) {
-        yield InlineSpanSemanticsInformation(workingText, semanticsLabel: workingLabel ?? workingText);
-        workingText = '';
-        workingLabel = null;
-      }
+      yield InlineSpanSemanticsInformation(workingText, semanticsLabel: workingLabel ?? workingText);
+      workingText = '';
+      workingLabel = null;
       yield info;
     } else {
       workingText += info.text;
       workingLabel ??= '';
       final String? infoSemanticsLabel = info.semanticsLabel;
-      if (infoSemanticsLabel != null) {
-        workingLabel += infoSemanticsLabel;
-      } else {
-        workingLabel += info.text;
-      }
+      workingLabel += infoSemanticsLabel ?? info.text;
     }
   }
-  if (workingText != null) {
-    yield InlineSpanSemanticsInformation(workingText, semanticsLabel: workingLabel);
-  } else {
-    assert(workingLabel != null);
-  }
+  assert(workingLabel != null);
 }
 
 Iterable<InlineSpanSemanticsInformation> combineSemanticsInfoList(List<InlineSpanSemanticsInformation> inputs) {
@@ -113,27 +103,17 @@ Iterable<InlineSpanSemanticsInformation> combineSemanticsInfoList(List<InlineSpa
   final List<InlineSpanSemanticsInformation> result = <InlineSpanSemanticsInformation>[];
   for (final InlineSpanSemanticsInformation info in inputs) {
     if (info.requiresOwnNode) {
-      if (workingText != null) {
-        result.add(InlineSpanSemanticsInformation(workingText, semanticsLabel: workingLabel ?? workingText));
-        workingText = '';
-        workingLabel = null;
-      }
+      result.add(InlineSpanSemanticsInformation(workingText, semanticsLabel: workingLabel ?? workingText));
+      workingText = '';
+      workingLabel = null;
       result.add(info);
     } else {
       workingText += info.text;
       workingLabel ??= '';
       final String? infoSemanticsLabel = info.semanticsLabel;
-      if (infoSemanticsLabel != null) {
-        workingLabel += infoSemanticsLabel;
-      } else {
-        workingLabel += info.text;
-      }
+      workingLabel += infoSemanticsLabel ?? info.text;
     }
   }
-  if (workingText != null) {
-    result.add(InlineSpanSemanticsInformation(workingText, semanticsLabel: workingLabel));
-  } else {
-    assert(workingLabel != null);
-  }
+  assert(workingLabel != null);
   return result;
 }

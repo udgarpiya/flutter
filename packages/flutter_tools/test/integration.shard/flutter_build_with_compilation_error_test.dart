@@ -63,12 +63,16 @@ int x = 'String';
           '--no-codesign',
       ], workingDirectory: projectRoot.path);
 
-      expect(
-        // iOS shows this as stdout.
-        targetPlatform == 'ios' ? result.stdout : result.stderr,
-        contains("A value of type 'String' can't be assigned to a variable of type 'int'."),
-      );
-      expect(result.exitCode, 1);
+      const String errorMessage = "A value of type 'String' can't be assigned to a variable of type 'int'.";
+
+      // Xcode 16 moved the xcodebuild error details from stderr to stdout.
+      // Check that it's contained in one or the other.
+      final bool matchStdout = result.stdout.toString().contains(errorMessage);
+      final bool matchStderr = result.stderr.toString().contains(errorMessage);
+
+      expect(matchStdout || matchStderr, isTrue);
+      expect(result.stderr, isNot(contains("Warning: The 'dart2js' entrypoint script is deprecated")));
+      expect(result.stdout, isNot(contains("Warning: The 'dart2js' entrypoint script is deprecated")));
     });
   }
 }

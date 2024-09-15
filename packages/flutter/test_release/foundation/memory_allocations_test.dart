@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final MemoryAllocations ma = MemoryAllocations.instance;
+  final FlutterMemoryAllocations ma = FlutterMemoryAllocations.instance;
 
   setUp(() {
     assert(!ma.hasListeners);
@@ -19,18 +19,19 @@ void main() {
     expect(kFlutterMemoryAllocationsEnabled, isFalse);
   });
 
-  test(
-    '$MemoryAllocations is noop when kFlutterMemoryAllocationsEnabled is false.',
-    () async {
-      ObjectEvent? recievedEvent;
-      ObjectEvent listener(ObjectEvent event) => recievedEvent = event;
+  testWidgets(
+    '$FlutterMemoryAllocations is noop when kFlutterMemoryAllocationsEnabled is false.',
+    (WidgetTester tester) async {
+      ObjectEvent? receivedEvent;
+      ObjectEvent listener(ObjectEvent event) => receivedEvent = event;
 
       ma.addListener(listener);
       _checkSdkHandlersNotSet();
+      expect(ma.hasListeners, isFalse);
 
-      await _activateFlutterObjects();
+      await _activateFlutterObjects(tester);
       _checkSdkHandlersNotSet();
-      expect(recievedEvent, isNull);
+      expect(receivedEvent, isNull);
       expect(ma.hasListeners, isFalse);
 
       ma.removeListener(listener);
@@ -47,16 +48,17 @@ void _checkSdkHandlersNotSet() {
 }
 
 /// Create and dispose Flutter objects to fire memory allocation events.
-Future<void> _activateFlutterObjects() async {
+Future<void> _activateFlutterObjects(WidgetTester tester) async {
   final ValueNotifier<bool> valueNotifier = ValueNotifier<bool>(true);
   final ChangeNotifier changeNotifier = ChangeNotifier()..addListener(() {});
-  final Image image = await _createImage();
   final Picture picture = _createPicture();
 
   valueNotifier.dispose();
   changeNotifier.dispose();
-  image.dispose();
   picture.dispose();
+
+  final Image image = await _createImage();
+  image.dispose();
 }
 
 Future<Image> _createImage() async {

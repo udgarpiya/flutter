@@ -35,6 +35,7 @@ void main() {
 
     expect(iosPlugin.pluginClass, 'SamplePlugin');
     expect(iosPlugin.classPrefix, 'FLT');
+    expect(iosPlugin.sharedDarwinSource, isFalse);
     expect(androidPlugin.pluginClass, 'SamplePlugin');
     expect(androidPlugin.package, 'com.flutter.dev');
   });
@@ -47,10 +48,12 @@ void main() {
       '  pluginClass: ASamplePlugin\n'
       ' ios:\n'
       '  pluginClass: ISamplePlugin\n'
+      '  sharedDarwinSource: true\n'
       ' linux:\n'
       '  pluginClass: LSamplePlugin\n'
       ' macos:\n'
       '  pluginClass: MSamplePlugin\n'
+      '  sharedDarwinSource: true\n'
       ' web:\n'
       '  pluginClass: WebSamplePlugin\n'
       '  fileName: web_plugin.dart\n'
@@ -76,10 +79,12 @@ void main() {
 
     expect(iosPlugin.pluginClass, 'ISamplePlugin');
     expect(iosPlugin.classPrefix, '');
+    expect(iosPlugin.sharedDarwinSource, isTrue);
     expect(androidPlugin.pluginClass, 'ASamplePlugin');
     expect(androidPlugin.package, 'com.flutter.dev');
     expect(linuxPlugin.pluginClass, 'LSamplePlugin');
     expect(macOSPlugin.pluginClass, 'MSamplePlugin');
+    expect(macOSPlugin.sharedDarwinSource, isTrue);
     expect(webPlugin.pluginClass, 'WebSamplePlugin');
     expect(webPlugin.fileName, 'web_plugin.dart');
     expect(windowsPlugin.pluginClass, 'WinSamplePlugin');
@@ -124,10 +129,12 @@ void main() {
 
     expect(iosPlugin.pluginClass, 'ISamplePlugin');
     expect(iosPlugin.classPrefix, '');
+    expect(iosPlugin.sharedDarwinSource, isFalse);
     expect(androidPlugin.pluginClass, 'ASamplePlugin');
     expect(androidPlugin.package, 'com.flutter.dev');
     expect(linuxPlugin.pluginClass, 'LSamplePlugin');
     expect(macOSPlugin.pluginClass, 'MSamplePlugin');
+    expect(macOSPlugin.sharedDarwinSource, isFalse);
     expect(webPlugin.pluginClass, 'WebSamplePlugin');
     expect(webPlugin.fileName, 'web_plugin.dart');
     expect(windowsPlugin.pluginClass, 'WinSamplePlugin');
@@ -174,6 +181,167 @@ void main() {
     expect(linuxPlugin.dartPluginClass, 'LSamplePlugin');
     expect(macOSPlugin.dartPluginClass, 'MSamplePlugin');
     expect(windowsPlugin.dartPluginClass, 'WinSamplePlugin');
+  });
+
+  testWithoutContext('Plugin parsing allows a dartFileName field with dartPluginClass', () {
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    const String pluginYamlRaw =
+      'platforms:\n'
+      ' android:\n'
+      '  dartPluginClass: AndroidClass\n'
+      '  dartFileName: src/android_class.dart\n'
+      ' ios:\n'
+      '  dartPluginClass: IosClass\n'
+      '  dartFileName: src/ios_class.dart\n'
+      ' linux:\n'
+      '  dartPluginClass: LinuxClass\n'
+      '  dartFileName: src/linux_class.dart\n'
+      ' macos:\n'
+      '  dartPluginClass: MacOSClass\n'
+      '  dartFileName: src/macos_class.dart\n'
+      ' windows:\n'
+      '  dartPluginClass: WindowsClass\n'
+      '  dartFileName: src/windows_class.dart\n';
+
+    final YamlMap pluginYaml = loadYaml(pluginYamlRaw) as YamlMap;
+    final Plugin plugin = Plugin.fromYaml(
+      _kTestPluginName,
+      _kTestPluginPath,
+      pluginYaml,
+      null,
+      const <String>[],
+      fileSystem: fileSystem,
+    );
+
+    expect(plugin.pluginDartClassPlatforms, <String, DartPluginClassAndFilePair>{
+      'android': const (dartClass: 'AndroidClass', dartFileName: 'src/android_class.dart'),
+      'ios': const (dartClass: 'IosClass', dartFileName: 'src/ios_class.dart'),
+      'linux':  const (dartClass: 'LinuxClass', dartFileName: 'src/linux_class.dart'),
+      'macos':  const (dartClass: 'MacOSClass', dartFileName: 'src/macos_class.dart'),
+      'windows':  const (dartClass: 'WindowsClass', dartFileName: 'src/windows_class.dart'),
+    });
+  });
+
+  testWithoutContext('dartFileName without dartPluginClass throws (Android)', () {
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    const String pluginYamlRaw =
+      'platforms:\n'
+      ' android:\n'
+      '  package: com.example\n'
+      '  pluginClass: AndroidClass\n'
+      '  dartFileName: src/android_class.dart\n';
+
+    final YamlMap pluginYaml = loadYaml(pluginYamlRaw) as YamlMap;
+    expect(
+     () => Plugin.fromYaml(
+        _kTestPluginName,
+        _kTestPluginPath,
+        pluginYaml,
+        null,
+        const <String>[],
+        fileSystem: fileSystem,
+      ),
+      throwsToolExit(
+        message: '"dartFileName" cannot be specified without "dartPluginClass" in Android platform of plugin "$_kTestPluginName"',
+      ),
+    );
+  });
+
+  testWithoutContext('dartFileName without dartPluginClass throws (iOS)', () {
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    const String pluginYamlRaw =
+      'platforms:\n'
+      ' ios:\n'
+      '  pluginClass: IosClass\n'
+      '  dartFileName: src/ios_class.dart\n';
+
+    final YamlMap pluginYaml = loadYaml(pluginYamlRaw) as YamlMap;
+    expect(
+     () => Plugin.fromYaml(
+        _kTestPluginName,
+        _kTestPluginPath,
+        pluginYaml,
+        null,
+        const <String>[],
+        fileSystem: fileSystem,
+      ),
+      throwsToolExit(
+        message: '"dartFileName" cannot be specified without "dartPluginClass" in iOS platform of plugin "$_kTestPluginName"',
+      ),
+    );
+  });
+
+  testWithoutContext('dartFileName without dartPluginClass throws (Linux)', () {
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    const String pluginYamlRaw =
+      'platforms:\n'
+      ' linux:\n'
+      '  pluginClass: LinuxClass\n'
+      '  dartFileName: src/linux_class.dart\n';
+
+    final YamlMap pluginYaml = loadYaml(pluginYamlRaw) as YamlMap;
+    expect(
+     () => Plugin.fromYaml(
+        _kTestPluginName,
+        _kTestPluginPath,
+        pluginYaml,
+        null,
+        const <String>[],
+        fileSystem: fileSystem,
+      ),
+      throwsToolExit(
+        message: '"dartFileName" cannot be specified without "dartPluginClass" in Linux platform of plugin "$_kTestPluginName"',
+      ),
+    );
+  });
+
+  testWithoutContext('dartFileName without dartPluginClass throws (MacOS)', () {
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    const String pluginYamlRaw =
+      'platforms:\n'
+      ' macos:\n'
+      '  pluginClass: MacOSClass\n'
+      '  dartFileName: src/macos_class.dart\n';
+
+    final YamlMap pluginYaml = loadYaml(pluginYamlRaw) as YamlMap;
+    expect(
+     () => Plugin.fromYaml(
+        _kTestPluginName,
+        _kTestPluginPath,
+        pluginYaml,
+        null,
+        const <String>[],
+        fileSystem: fileSystem,
+      ),
+      throwsToolExit(
+        message: '"dartFileName" cannot be specified without "dartPluginClass" in macOS platform of plugin "$_kTestPluginName"',
+      ),
+    );
+  });
+
+
+  testWithoutContext('dartFileName without dartPluginClass throws (Windows)', () {
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    const String pluginYamlRaw =
+      'platforms:\n'
+      ' windows:\n'
+      '  pluginClass: WindowsClass\n'
+      '  dartFileName: src/windows_class.dart\n';
+
+    final YamlMap pluginYaml = loadYaml(pluginYamlRaw) as YamlMap;
+    expect(
+     () => Plugin.fromYaml(
+        _kTestPluginName,
+        _kTestPluginPath,
+        pluginYaml,
+        null,
+        const <String>[],
+        fileSystem: fileSystem,
+      ),
+      throwsToolExit(
+        message: '"dartFileName" cannot be specified without "dartPluginClass" in Windows platform of plugin "$_kTestPluginName"',
+      ),
+    );
   });
 
   testWithoutContext('Plugin parsing of legacy format and multi-platform format together is not allowed '
@@ -258,10 +426,10 @@ void main() {
       fileSystem: fileSystem,
     );
 
-    expect(plugin.pluginDartClassPlatforms, <String, String>{
-      'linux': 'LinuxClass',
-      'macos': 'MacOSClass',
-      'windows': 'WindowsClass',
+    expect(plugin.pluginDartClassPlatforms, <String, DartPluginClassAndFilePair>{
+      'linux':  const (dartClass: 'LinuxClass', dartFileName: 'test_plugin_name.dart'),
+      'macos':  const (dartClass: 'MacOSClass', dartFileName: 'test_plugin_name.dart'),
+      'windows':  const (dartClass: 'WindowsClass', dartFileName: 'test_plugin_name.dart'),
     });
   });
 
@@ -288,6 +456,29 @@ void main() {
     expect(windowsPlugin.supportedVariants, <PluginPlatformVariant>[
       PluginPlatformVariant.win32,
     ]);
+  });
+
+  testWithoutContext('Web plugin tool exits if fileName field missing', () {
+    final FileSystem fileSystem = MemoryFileSystem.test();
+    const String pluginYamlRaw =
+      'platforms:\n'
+      ' web:\n'
+      '  pluginClass: WebSamplePlugin\n';
+
+    final YamlMap pluginYaml = loadYaml(pluginYamlRaw) as YamlMap;
+    expect(
+      () => Plugin.fromYaml(
+        _kTestPluginName,
+        _kTestPluginPath,
+        pluginYaml,
+        null,
+        const <String>[],
+        fileSystem: fileSystem,
+      ),
+      throwsToolExit(
+        message: 'The plugin `$_kTestPluginName` is missing the required field `fileName` in pubspec.yaml',
+      ),
+    );
   });
 
   testWithoutContext('Windows assumes win32 when no variants are given', () {

@@ -56,12 +56,10 @@ void main() {
 
   setUp(() {
     binding.postFrameCallbacks.clear();
-    binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.mouseCursor, (MethodCall call) async {
-      if (methodCallHandler != null) {
-        return methodCallHandler!(call);
-      }
-      return null;
-    });
+    binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.mouseCursor,
+      (MethodCall call) => methodCallHandler?.call(call),
+    );
   });
 
   tearDown(() {
@@ -438,18 +436,18 @@ ui.PointerData _pointerData(
   int device = 0,
   PointerDeviceKind kind = PointerDeviceKind.mouse,
 }) {
+  final double devicePixelRatio = RendererBinding.instance.platformDispatcher.implicitView!.devicePixelRatio;
   return ui.PointerData(
     change: change,
-    physicalX: logicalPosition.dx * RendererBinding.instance.window.devicePixelRatio,
-    physicalY: logicalPosition.dy * RendererBinding.instance.window.devicePixelRatio,
+    physicalX: logicalPosition.dx * devicePixelRatio,
+    physicalY: logicalPosition.dy * devicePixelRatio,
     kind: kind,
     device: device,
   );
 }
 
 class _CursorUpdateDetails extends MethodCall {
-  const _CursorUpdateDetails(super.method, Map<String, dynamic> super.arguments)
-    : assert(arguments != null);
+  const _CursorUpdateDetails(super.method, Map<String, dynamic> super.arguments);
 
   _CursorUpdateDetails.wrap(MethodCall call)
     : super(call.method, Map<String, dynamic>.from(call.arguments as Map<dynamic, dynamic>));
@@ -462,7 +460,7 @@ class _CursorUpdateDetails extends MethodCall {
   Map<String, dynamic> get arguments => super.arguments as Map<String, dynamic>;
 
   @override
-  bool operator ==(dynamic other) {
+  bool operator ==(Object other) {
     if (identical(other, this)) {
       return true;
     }

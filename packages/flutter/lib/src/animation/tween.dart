@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'dart:ui' show Color, Rect, Size;
 
 import 'package:flutter/foundation.dart';
@@ -19,9 +22,9 @@ export 'curves.dart' show Curve;
 
 /// A typedef used by [Animatable.fromCallback] to create an [Animatable]
 /// from a callback.
-typedef AnimatableCallback<T> = T Function(double);
+typedef AnimatableCallback<T> = T Function(double value);
 
-/// An object that can produce a value of type `T` given an [Animation<double>]
+/// An object that can produce a value of type [T] given an [Animation<double>]
 /// as input.
 ///
 /// Typically, the values of the input animation are nominally in the range 0.0
@@ -82,9 +85,15 @@ abstract class Animatable<T> {
   }
 
   /// Returns a new [Animatable] whose value is determined by first evaluating
-  /// the given parent and then evaluating this object.
+  /// the given parent and then evaluating this object at the result.
   ///
-  /// This allows [Tween]s to be chained before obtaining an [Animation].
+  /// This method represents function composition on [transform]:
+  /// the [transform] method of the returned [Animatable] is the result of
+  /// composing this object's [transform] method with
+  /// the given parent's [transform] method.
+  ///
+  /// This allows [Tween]s to be chained before obtaining an [Animation],
+  /// without allocating an [Animation] for the intermediate result.
   Animatable<T> chain(Animatable<double> parent) {
     return _ChainedEvaluation<T>(parent, this);
   }
@@ -149,11 +158,12 @@ class _ChainedEvaluation<T> extends Animatable<T> {
 /// [animate] method and pass it the [Animation] object that you want to
 /// modify.
 ///
-/// You can chain [Tween] objects together using the [chain] method, so that a
-/// single [Animation] object is configured by multiple [Tween] objects called
-/// in succession. This is different than calling the [animate] method twice,
-/// which results in two separate [Animation] objects, each configured with a
-/// single [Tween].
+/// You can chain [Tween] objects together using the [chain] method,
+/// producing the function composition of their [transform] methods.
+/// Configuring a single [Animation] object by calling [animate] on the
+/// resulting [Tween] produces the same result as calling the [animate] method
+/// on each [Tween] separately in succession, but more efficiently because
+/// it avoids creating [Animation] objects for the intermediate results.
 ///
 /// {@tool snippet}
 ///
@@ -248,6 +258,12 @@ class _ChainedEvaluation<T> extends Animatable<T> {
 /// If `T` is not nullable, then [begin] and [end] must both be set to
 /// non-null values before using [lerp] or [transform], otherwise they
 /// will throw.
+///
+/// ## Implementing a Tween
+///
+/// To specialize this class for a new type, the subclass should implement
+/// the [lerp] method (and a constructor). The other methods of this class
+/// are all defined in terms of [lerp].
 class Tween<T extends Object?> extends Animatable<T> {
   /// Creates a tween.
   ///
@@ -364,8 +380,7 @@ class Tween<T extends Object?> extends Animatable<T> {
 class ReverseTween<T extends Object?> extends Tween<T> {
   /// Construct a [Tween] that evaluates its [parent] in reverse.
   ReverseTween(this.parent)
-    : assert(parent != null),
-      super(begin: parent.end, end: parent.begin);
+    : super(begin: parent.end, end: parent.begin);
 
   /// This tween's value is the same as the parent's value evaluated in reverse.
   ///
@@ -542,10 +557,7 @@ class ConstantTween<T> extends Tween<T> {
 ///    [AnimationController].
 class CurveTween extends Animatable<double> {
   /// Creates a curve tween.
-  ///
-  /// The [curve] argument must not be null.
-  CurveTween({ required this.curve })
-    : assert(curve != null);
+  CurveTween({ required this.curve });
 
   /// The curve to use when transforming the value of the animation.
   Curve curve;

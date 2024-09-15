@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// @docImport 'package:flutter/widgets.dart';
+/// @docImport 'package:flutter_test/flutter_test.dart';
+library;
 
 import 'dart:ui' as ui show lerpDouble;
 
@@ -19,6 +22,8 @@ export 'package:flutter/scheduler.dart' show TickerFuture, TickerProvider;
 
 export 'animation.dart' show Animation, AnimationStatus;
 export 'curves.dart' show Curve;
+
+const String _flutterAnimationLibrary = 'package:flutter/animation.dart';
 
 // Examples can assume:
 // late AnimationController _controller, fadeAnimationController, sizeAnimationController;
@@ -79,34 +84,29 @@ enum AnimationBehavior {
 /// * Create a [fling] animation effect using a physics simulation.
 ///
 /// By default, an [AnimationController] linearly produces values that range
-/// from 0.0 to 1.0, during a given duration. The animation controller generates
-/// a new value whenever the device running your app is ready to display a new
-/// frame (typically, this rate is around 60 values per second).
+/// from 0.0 to 1.0, during a given duration.
+///
+/// When the animation is actively animating, the animation controller generates
+/// a new value each time the device running your app is ready to display a new
+/// frame (typically, this rate is around 60–120 values per second).
+/// If the animation controller is associated with a [State]
+/// through a [TickerProvider], then its updates will be silenced when that
+/// [State]'s subtree is disabled as defined by [TickerMode]; time will still
+/// elapse, and methods like [forward] and [stop] can still be called and
+/// will change the value, but the controller will not generate new values
+/// on its own.
 ///
 /// ## Ticker providers
 ///
 /// An [AnimationController] needs a [TickerProvider], which is configured using
 /// the `vsync` argument on the constructor.
+/// The constructor uses the [TickerProvider] to create a [Ticker], which
+/// the [AnimationController] uses to step through the animation it controls.
 ///
-/// The [TickerProvider] interface describes a factory for [Ticker] objects. A
-/// [Ticker] is an object that knows how to register itself with the
-/// [SchedulerBinding] and fires a callback every frame. The
-/// [AnimationController] class uses a [Ticker] to step through the animation
-/// that it controls.
-///
-/// If an [AnimationController] is being created from a [State], then the State
-/// can use the [TickerProviderStateMixin] and [SingleTickerProviderStateMixin]
-/// classes to implement the [TickerProvider] interface. The
-/// [TickerProviderStateMixin] class always works for this purpose; the
-/// [SingleTickerProviderStateMixin] is slightly more efficient in the case of
-/// the class only ever needing one [Ticker] (e.g. if the class creates only a
-/// single [AnimationController] during its entire lifetime).
-///
-/// The widget test framework [WidgetTester] object can be used as a ticker
-/// provider in the context of tests. In other contexts, you will have to either
-/// pass a [TickerProvider] from a higher level (e.g. indirectly from a [State]
-/// that mixes in [TickerProviderStateMixin]), or create a custom
-/// [TickerProvider] subclass.
+/// For advice on obtaining a ticker provider, see [TickerProvider].
+/// Typically the relevant [State] serves as the ticker provider,
+/// after applying a suitable mixin (like [SingleTickerProviderStateMixin])
+/// to cause the [State] subclass to implement [TickerProvider].
 ///
 /// ## Life cycle
 ///
@@ -206,6 +206,19 @@ enum AnimationBehavior {
 /// controllers are created in [State.initState] and disposed in
 /// [State.dispose], as described in the previous section.)
 ///
+/// {@tool dartpad}
+/// This example shows how to use [AnimationController] and
+/// [SlideTransition] to create an animated digit like you might find
+/// on an old pinball machine our your car's odometer.  New digit
+/// values slide into place from below, as the old value slides
+/// upwards and out of view. Taps that occur while the controller is
+/// already animating cause the controller's
+/// [AnimationController.duration] to be reduced so that the visuals
+/// don't fall behind.
+///
+/// ** See code in examples/api/lib/animation/animation_controller/animated_digit.0.dart **
+/// {@end-tool}
+///
 /// See also:
 ///
 ///  * [Tween], the base class for converting an [AnimationController] to a
@@ -223,16 +236,14 @@ class AnimationController extends Animation<double>
   ///   debugging (used by [toString]).
   ///
   /// * [lowerBound] is the smallest value this animation can obtain and the
-  ///   value at which this animation is deemed to be dismissed. It cannot be
-  ///   null.
+  ///   value at which this animation is deemed to be dismissed.
   ///
   /// * [upperBound] is the largest value this animation can obtain and the
-  ///   value at which this animation is deemed to be completed. It cannot be
-  ///   null.
+  ///   value at which this animation is deemed to be completed.
   ///
-  /// * `vsync` is the [TickerProvider] for the current context. It can be
-  ///   changed by calling [resync]. It is required and must not be null. See
-  ///   [TickerProvider] for advice on obtaining a ticker provider.
+  /// * `vsync` is the required [TickerProvider] for the current context. It can
+  ///   be changed by calling [resync]. See [TickerProvider] for advice on
+  ///   obtaining a ticker provider.
   AnimationController({
     double? value,
     this.duration,
@@ -242,11 +253,11 @@ class AnimationController extends Animation<double>
     this.upperBound = 1.0,
     this.animationBehavior = AnimationBehavior.normal,
     required TickerProvider vsync,
-  }) : assert(lowerBound != null),
-       assert(upperBound != null),
-       assert(upperBound >= lowerBound),
-       assert(vsync != null),
+  }) : assert(upperBound >= lowerBound),
        _direction = _AnimationDirection.forward {
+    if (kFlutterMemoryAllocationsEnabled) {
+      _maybeDispatchObjectCreation();
+    }
     _ticker = vsync.createTicker(_tick);
     _internalSetValue(value ?? lowerBound);
   }
@@ -261,9 +272,9 @@ class AnimationController extends Animation<double>
   /// * [debugLabel] is a string to help identify this animation during
   ///   debugging (used by [toString]).
   ///
-  /// * `vsync` is the [TickerProvider] for the current context. It can be
-  ///   changed by calling [resync]. It is required and must not be null. See
-  ///   [TickerProvider] for advice on obtaining a ticker provider.
+  /// * `vsync` is the required [TickerProvider] for the current context. It can
+  ///   be changed by calling [resync]. See [TickerProvider] for advice on
+  ///   obtaining a ticker provider.
   ///
   /// This constructor is most useful for animations that will be driven using a
   /// physics simulation, especially when the physics simulation has no
@@ -275,13 +286,25 @@ class AnimationController extends Animation<double>
     this.debugLabel,
     required TickerProvider vsync,
     this.animationBehavior = AnimationBehavior.preserve,
-  }) : assert(value != null),
-       assert(vsync != null),
-       lowerBound = double.negativeInfinity,
+  }) : lowerBound = double.negativeInfinity,
        upperBound = double.infinity,
        _direction = _AnimationDirection.forward {
+    if (kFlutterMemoryAllocationsEnabled) {
+      _maybeDispatchObjectCreation();
+    }
     _ticker = vsync.createTicker(_tick);
     _internalSetValue(value);
+  }
+
+  /// Dispatches event of object creation to [FlutterMemoryAllocations.instance].
+  void _maybeDispatchObjectCreation() {
+    if (kFlutterMemoryAllocationsEnabled) {
+      FlutterMemoryAllocations.instance.dispatchObjectCreated(
+        library: _flutterAnimationLibrary,
+        className: '$AnimationController',
+        object: this,
+      );
+    }
   }
 
   /// The value at which this animation is deemed to be dismissed.
@@ -363,7 +386,6 @@ class AnimationController extends Animation<double>
   ///  * [forward], [reverse], [animateTo], [animateWith], [fling], and [repeat],
   ///    which start the animation controller.
   set value(double newValue) {
-    assert(newValue != null);
     stop();
     _internalSetValue(newValue);
     notifyListeners();
@@ -406,9 +428,10 @@ class AnimationController extends Animation<double>
     } else if (_value == upperBound) {
       _status = AnimationStatus.completed;
     } else {
-      _status = (_direction == _AnimationDirection.forward) ?
-        AnimationStatus.forward :
-        AnimationStatus.reverse;
+      _status = switch (_direction) {
+        _AnimationDirection.forward => AnimationStatus.forward,
+        _AnimationDirection.reverse => AnimationStatus.reverse,
+      };
     }
   }
 
@@ -425,6 +448,11 @@ class AnimationController extends Animation<double>
   /// controller's ticker might get muted, in which case the animation
   /// controller's callbacks will no longer fire even though time is continuing
   /// to pass. See [Ticker.muted] and [TickerMode].
+  ///
+  /// If the animation was stopped (e.g. with [stop] or by setting a new [value]),
+  /// [isAnimating] will return `false` but the [status] will not change,
+  /// so the value of [AnimationStatus.isAnimating] might still be `true`.
+  @override
   bool get isAnimating => _ticker != null && _ticker!.isActive;
 
   _AnimationDirection _direction;
@@ -436,6 +464,9 @@ class AnimationController extends Animation<double>
   /// Starts running this animation forwards (towards the end).
   ///
   /// Returns a [TickerFuture] that completes when the animation is complete.
+  ///
+  /// If [from] is non-null, it will be set as the current [value] before running
+  /// the animation.
   ///
   /// The most recently returned [TickerFuture], if any, is marked as having been
   /// canceled, meaning the future never completes and its [TickerFuture.orCancel]
@@ -471,6 +502,9 @@ class AnimationController extends Animation<double>
   ///
   /// Returns a [TickerFuture] that completes when the animation is dismissed.
   ///
+  /// If [from] is non-null, it will be set as the current [value] before running
+  /// the animation.
+  ///
   /// The most recently returned [TickerFuture], if any, is marked as having been
   /// canceled, meaning the future never completes and its [TickerFuture.orCancel]
   /// derivative future completes with a [TickerCanceled] error.
@@ -501,7 +535,49 @@ class AnimationController extends Animation<double>
     return _animateToInternal(lowerBound);
   }
 
-  /// Drives the animation from its current value to target.
+  /// Toggles the direction of this animation, based on whether it [isForwardOrCompleted].
+  ///
+  /// Specifically, this function acts the same way as [reverse] if the [status] is
+  /// either [AnimationStatus.forward] or [AnimationStatus.completed], and acts as
+  /// [forward] for [AnimationStatus.reverse] or [AnimationStatus.dismissed].
+  ///
+  /// If [from] is non-null, it will be set as the current [value] before running
+  /// the animation.
+  ///
+  /// The most recently returned [TickerFuture], if any, is marked as having been
+  /// canceled, meaning the future never completes and its [TickerFuture.orCancel]
+  /// derivative future completes with a [TickerCanceled] error.
+  TickerFuture toggle({ double? from }) {
+    assert(() {
+      Duration? duration = this.duration;
+      if (isForwardOrCompleted) {
+        duration ??= reverseDuration;
+      }
+      if (duration == null) {
+        throw FlutterError(
+          'AnimationController.toggle() called with no default duration.\n'
+          'The "duration" property should be set, either in the constructor or later, before '
+          'calling the toggle() function.',
+        );
+      }
+      return true;
+    }());
+    assert(
+      _ticker != null,
+      'AnimationController.toggle() called after AnimationController.dispose()\n'
+      'AnimationController methods should not be used after calling dispose.',
+    );
+    _direction = isForwardOrCompleted ? _AnimationDirection.reverse : _AnimationDirection.forward;
+    if (from != null) {
+      value = from;
+    }
+    return _animateToInternal(switch (_direction) {
+      _AnimationDirection.forward => upperBound,
+      _AnimationDirection.reverse => lowerBound,
+    });
+  }
+
+  /// Drives the animation from its current value to the given target, "forward".
   ///
   /// Returns a [TickerFuture] that completes when the animation is complete.
   ///
@@ -538,7 +614,7 @@ class AnimationController extends Animation<double>
     return _animateToInternal(target, duration: duration, curve: curve);
   }
 
-  /// Drives the animation from its current value to target.
+  /// Drives the animation from its current value to the given target, "backward".
   ///
   /// Returns a [TickerFuture] that completes when the animation is complete.
   ///
@@ -550,6 +626,10 @@ class AnimationController extends Animation<double>
   /// regardless of whether `target` < [value] or not. At the end of the
   /// animation, when `target` is reached, [status] is reported as
   /// [AnimationStatus.dismissed].
+  ///
+  /// If the `target` argument is the same as the current [value] of the
+  /// animation, then this won't animate, and the returned [TickerFuture] will
+  /// be already complete.
   TickerFuture animateBack(double target, { Duration? duration, Curve curve = Curves.linear }) {
     assert(() {
       if (this.duration == null && reverseDuration == null && duration == null) {
@@ -572,21 +652,15 @@ class AnimationController extends Animation<double>
   }
 
   TickerFuture _animateToInternal(double target, { Duration? duration, Curve curve = Curves.linear }) {
-    double scale = 1.0;
-    if (SemanticsBinding.instance.disableAnimations) {
-      switch (animationBehavior) {
-        case AnimationBehavior.normal:
-          // Since the framework cannot handle zero duration animations, we run it at 5% of the normal
-          // duration to limit most animations to a single frame.
-          // Ideally, the framework would be able to handle zero duration animations, however, the common
-          // pattern of an eternally repeating animation might cause an endless loop if it weren't delayed
-          // for at least one frame.
-          scale = 0.05;
-          break;
-        case AnimationBehavior.preserve:
-          break;
-      }
-    }
+    final double scale = switch (animationBehavior) {
+      // Since the framework cannot handle zero duration animations, we run it at 5% of the normal
+      // duration to limit most animations to a single frame.
+      // Ideally, the framework would be able to handle zero duration animations, however, the common
+      // pattern of an eternally repeating animation might cause an endless loop if it weren't delayed
+      // for at least one frame.
+      AnimationBehavior.normal when SemanticsBinding.instance.disableAnimations => 0.05,
+      AnimationBehavior.normal || AnimationBehavior.preserve => 1.0,
+    };
     Duration? simulationDuration = duration;
     if (simulationDuration == null) {
       assert(!(this.duration == null && _direction == _AnimationDirection.forward));
@@ -634,13 +708,23 @@ class AnimationController extends Animation<double>
   /// provided, [duration] will be used instead, which has to be set before [repeat] is
   /// called either in the constructor or later by using the [duration] setter.
   ///
-  /// Returns a [TickerFuture] that never completes. The [TickerFuture.orCancel] future
-  /// completes with an error when the animation is stopped (e.g. with [stop]).
+  /// If a value is passed to [count], the animation will perform that many
+  /// iterations before stopping. Otherwise, the animation repeats indefinitely.
+  ///
+  /// Returns a [TickerFuture] that never completes, unless a [count] is specified.
+  /// The [TickerFuture.orCancel] future completes with an error when the animation is
+  /// stopped (e.g. with [stop]).
   ///
   /// The most recently returned [TickerFuture], if any, is marked as having been
   /// canceled, meaning the future never completes and its [TickerFuture.orCancel]
   /// derivative future completes with a [TickerCanceled] error.
-  TickerFuture repeat({ double? min, double? max, bool reverse = false, Duration? period }) {
+  TickerFuture repeat({
+    double? min,
+    double? max,
+    bool reverse = false,
+    Duration? period,
+    int? count,
+  }) {
     min ??= lowerBound;
     max ??= upperBound;
     period ??= duration;
@@ -657,9 +741,9 @@ class AnimationController extends Animation<double>
     }());
     assert(max >= min);
     assert(max <= upperBound && min >= lowerBound);
-    assert(reverse != null);
+    assert(count == null || count > 0, 'Count shall be greater than zero if not null');
     stop();
-    return _startSimulation(_RepeatingSimulation(_value, min, max, reverse, period!, _directionSetter));
+    return _startSimulation(_RepeatingSimulation(_value, min, max, reverse, period!, _directionSetter, count));
   }
 
   void _directionSetter(_AnimationDirection direction) {
@@ -674,15 +758,18 @@ class AnimationController extends Animation<double>
   /// and initial velocity.
   ///
   /// If velocity is positive, the animation will complete, otherwise it will
-  /// dismiss.
+  /// dismiss. The velocity is specified in units per second. If the
+  /// [SemanticsBinding.disableAnimations] flag is set, the velocity is somewhat
+  /// arbitrarily multiplied by 200.
   ///
-  /// The [springDescription] parameter can be used to specify a custom [SpringType.criticallyDamped]
-  /// or [SpringType.overDamped] spring to drive the animation with. Defaults to null, which uses a
-  /// [SpringType.criticallyDamped] spring. See [SpringDescription.withDampingRatio] for how
-  /// to create a suitable [SpringDescription].
+  /// The [springDescription] parameter can be used to specify a custom
+  /// [SpringType.criticallyDamped] or [SpringType.overDamped] spring with which
+  /// to drive the animation. By default, a [SpringType.criticallyDamped] spring
+  /// is used. See [SpringDescription.withDampingRatio] for how to create a
+  /// suitable [SpringDescription].
   ///
-  /// The resulting spring simulation cannot be of type [SpringType.underDamped],
-  /// as this can lead to unexpected look of the produced animation.
+  /// The resulting spring simulation cannot be of type [SpringType.underDamped];
+  /// such a spring would oscillate rather than fling.
   ///
   /// Returns a [TickerFuture] that completes when the animation is complete.
   ///
@@ -694,25 +781,20 @@ class AnimationController extends Animation<double>
     _direction = velocity < 0.0 ? _AnimationDirection.reverse : _AnimationDirection.forward;
     final double target = velocity < 0.0 ? lowerBound - _kFlingTolerance.distance
                                          : upperBound + _kFlingTolerance.distance;
-    double scale = 1.0;
     final AnimationBehavior behavior = animationBehavior ?? this.animationBehavior;
-    if (SemanticsBinding.instance.disableAnimations) {
-      switch (behavior) {
-        case AnimationBehavior.normal:
-          // TODO(zanderso): determine a better process for setting velocity.
-          // the value below was arbitrarily chosen because it worked for the drawer widget.
-          scale = 200.0;
-          break;
-        case AnimationBehavior.preserve:
-          break;
-      }
-    }
+    final double scale = switch (behavior) {
+      // This is arbitrary (it was chosen because it worked for the drawer widget).
+      AnimationBehavior.normal when SemanticsBinding.instance.disableAnimations => 200.0,
+      AnimationBehavior.normal || AnimationBehavior.preserve => 1.0,
+    };
     final SpringSimulation simulation = SpringSimulation(springDescription, value, target, velocity * scale)
       ..tolerance = _kFlingTolerance;
     assert(
       simulation.type != SpringType.underDamped,
-      'The resulting spring simulation is of type SpringType.underDamped.\n'
-      'This can lead to unexpected look of the animation, please adjust the springDescription parameter',
+      'The specified spring simulation is of type SpringType.underDamped.\n'
+      'An underdamped spring results in oscillation rather than a fling. '
+      'Consider specifying a different springDescription, or use animateWith() '
+      'with an explicit SpringSimulation if an underdamped spring is intentional.',
     );
     stop();
     return _startSimulation(simulation);
@@ -744,7 +826,6 @@ class AnimationController extends Animation<double>
   }
 
   TickerFuture _startSimulation(Simulation simulation) {
-    assert(simulation != null);
     assert(!isAnimating);
     _simulation = simulation;
     _lastElapsedDuration = Duration.zero;
@@ -807,6 +888,9 @@ class AnimationController extends Animation<double>
       }
       return true;
     }());
+    if (kFlutterMemoryAllocationsEnabled) {
+      FlutterMemoryAllocations.instance.dispatchObjectDisposed(object: this);
+    }
     _ticker!.dispose();
     _ticker = null;
     clearStatusListeners();
@@ -842,7 +926,13 @@ class AnimationController extends Animation<double>
   String toStringDetails() {
     final String paused = isAnimating ? '' : '; paused';
     final String ticker = _ticker == null ? '; DISPOSED' : (_ticker!.muted ? '; silenced' : '');
-    final String label = debugLabel == null ? '' : '; for $debugLabel';
+    String label = '';
+    assert(() {
+      if (debugLabel != null) {
+        label = '; for $debugLabel';
+      }
+      return true;
+    }());
     final String more = '${super.toStringDetails()} ${value.toStringAsFixed(3)}';
     return '$more$paused$ticker$label';
   }
@@ -850,9 +940,7 @@ class AnimationController extends Animation<double>
 
 class _InterpolationSimulation extends Simulation {
   _InterpolationSimulation(this._begin, this._end, Duration duration, this._curve, double scale)
-    : assert(_begin != null),
-      assert(_end != null),
-      assert(duration != null && duration.inMicroseconds > 0),
+    : assert(duration.inMicroseconds > 0),
       _durationInSeconds = (duration.inMicroseconds * scale) / Duration.microsecondsPerSecond;
 
   final double _durationInSeconds;
@@ -863,13 +951,11 @@ class _InterpolationSimulation extends Simulation {
   @override
   double x(double timeInSeconds) {
     final double t = clampDouble(timeInSeconds / _durationInSeconds, 0.0, 1.0);
-    if (t == 0.0) {
-      return _begin;
-    } else if (t == 1.0) {
-      return _end;
-    } else {
-      return _begin + (_end - _begin) * _curve.transform(t);
-    }
+    return switch (t) {
+      0.0 => _begin,
+      1.0 => _end,
+      _ => _begin + (_end - _begin) * _curve.transform(t),
+    };
   }
 
   @override
@@ -885,9 +971,20 @@ class _InterpolationSimulation extends Simulation {
 typedef _DirectionSetter = void Function(_AnimationDirection direction);
 
 class _RepeatingSimulation extends Simulation {
-  _RepeatingSimulation(double initialValue, this.min, this.max, this.reverse, Duration period, this.directionSetter)
-      : _periodInSeconds = period.inMicroseconds / Duration.microsecondsPerSecond,
-        _initialT = (max == min) ? 0.0 : (initialValue / (max - min)) * (period.inMicroseconds / Duration.microsecondsPerSecond) {
+  _RepeatingSimulation(
+    double initialValue,
+    this.min,
+    this.max,
+    this.reverse,
+    Duration period,
+    this.directionSetter,
+    this.count,
+  )  : assert(
+          count == null || count > 0,
+          'Count shall be greater than zero if not null',
+        ),
+        _periodInSeconds = period.inMicroseconds / Duration.microsecondsPerSecond,
+        _initialT = (max == min) ? 0.0 : ((clampDouble(initialValue, min, max) - min) / (max - min)) * (period.inMicroseconds / Duration.microsecondsPerSecond) {
     assert(_periodInSeconds > 0.0);
     assert(_initialT >= 0.0);
   }
@@ -895,10 +992,13 @@ class _RepeatingSimulation extends Simulation {
   final double min;
   final double max;
   final bool reverse;
+  final int? count;
   final _DirectionSetter directionSetter;
 
   final double _periodInSeconds;
   final double _initialT;
+
+  late final double _exitTimeInSeconds = (count! * _periodInSeconds) - _initialT;
 
   @override
   double x(double timeInSeconds) {
@@ -921,5 +1021,9 @@ class _RepeatingSimulation extends Simulation {
   double dx(double timeInSeconds) => (max - min) / _periodInSeconds;
 
   @override
-  bool isDone(double timeInSeconds) => false;
+  bool isDone(double timeInSeconds) {
+    // if [timeInSeconds] elapsed the [_exitTimeInSeconds] && [count] is not null,
+    // consider marking the simulation as "DONE"
+    return count != null && (timeInSeconds >= _exitTimeInSeconds);
+  }
 }

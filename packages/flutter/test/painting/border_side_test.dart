@@ -106,6 +106,10 @@ void main() {
     expect(paint2.color, const Color(0x00000000));
     expect(paint2.blendMode, BlendMode.srcOver);
   });
+  test('BorderSide - lerp identical a,b', () {
+    const BorderSide border = BorderSide();
+    expect(identical(BorderSide.lerp(border, border, 0.5), border), true);
+  });
   test("BorderSide - won't lerp into negative widths", () {
     const BorderSide side0 = BorderSide(width: 0.0);
     const BorderSide side1 = BorderSide();
@@ -119,7 +123,7 @@ void main() {
   test('BorderSide - toString', () {
     expect(
       const BorderSide(color: Color(0xFFAABBCC), width: 1.2345).toString(),
-      'BorderSide(color: Color(0xffaabbcc), width: 1.2)',
+      'BorderSide(color: ${const Color(0xffaabbcc)}, width: 1.2)',
     );
   });
 

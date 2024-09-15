@@ -14,6 +14,12 @@ void main() {
     expect(const TextTheme(), equals(const TextTheme().copyWith()));
   });
 
+  test('TextTheme lerp special cases', () {
+    expect(TextTheme.lerp(null, null, 0), const TextTheme());
+    const TextTheme theme = TextTheme();
+    expect(identical(TextTheme.lerp(theme, theme, 0.5), theme), true);
+  });
+
   test('TextTheme copyWith apply, merge basics with Typography.black', () {
     final Typography typography = Typography.material2018();
     expect(typography.black, equals(typography.black.copyWith()));
@@ -79,6 +85,7 @@ void main() {
     const Color displayColor = Color(0x00000001);
     const Color bodyColor = Color(0x00000002);
     const String fontFamily = 'fontFamily';
+    const List<String> fontFamilyFallback = <String>['font', 'family', 'fallback'];
     const Color decorationColor = Color(0x00000003);
     const TextDecorationStyle decorationStyle = TextDecorationStyle.dashed;
     final TextDecoration decoration = TextDecoration.combine(<TextDecoration>[
@@ -89,6 +96,7 @@ void main() {
     final Typography typography = Typography.material2018();
     final TextTheme theme = typography.black.apply(
       fontFamily: fontFamily,
+      fontFamilyFallback: fontFamilyFallback,
       displayColor: displayColor,
       bodyColor: bodyColor,
       decoration: decoration,
@@ -130,6 +138,7 @@ void main() {
       theme.labelSmall!,
     ];
     expect(themeStyles.every((TextStyle style) => style.fontFamily == fontFamily), true);
+    expect(themeStyles.every((TextStyle style) => style.fontFamilyFallback == fontFamilyFallback), true);
     expect(themeStyles.every((TextStyle style) => style.decorationColor == decorationColor), true);
     expect(themeStyles.every((TextStyle style) => style.decorationStyle == decorationStyle), true);
     expect(themeStyles.every((TextStyle style) => style.decoration == decoration), true);
@@ -236,5 +245,50 @@ void main() {
     final VisualDensity fullLerp = VisualDensity.lerp(a, b, 1.0);
     expect(fullLerp.horizontal, 2.0);
     expect(fullLerp.vertical, 1.0);
+  });
+
+  testWidgets('TextTheme.of(context) is equivalent to Theme.of(context).textTheme', (WidgetTester tester) async {
+    const Key sizedBoxKey = Key('sizedBox');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          textTheme: const TextTheme(
+            displayLarge: TextStyle(color: Colors.blue, fontSize: 30.0),
+          ),
+        ),
+        home: const SizedBox(key: sizedBoxKey),
+      ),
+    );
+    final BuildContext context = tester.element(find.byKey(sizedBoxKey));
+
+    final ThemeData themeData = Theme.of(context);
+    final TextTheme expectedTextTheme = themeData.textTheme;
+    final TextTheme actualTextTheme = TextTheme.of(context);
+
+    expect(actualTextTheme, equals(expectedTextTheme));
+
+  });
+
+  testWidgets('TextTheme.primaryOf(context) is equivalent to Theme.of(context).primaryTextTheme', (WidgetTester tester) async {
+    const Key sizedBoxKey = Key('sizedBox');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          primaryTextTheme: const TextTheme(
+            displayLarge: TextStyle(backgroundColor: Colors.green, fontStyle: FontStyle.italic),
+          ),
+        ),
+        home: const SizedBox(key: sizedBoxKey),
+      ),
+    );
+
+    final BuildContext context = tester.element(find.byKey(sizedBoxKey));
+    final ThemeData themeData = Theme.of(context);
+    final TextTheme expectedTextTheme = themeData.primaryTextTheme;
+    final TextTheme actualTextTheme = TextTheme.primaryOf(context);
+
+    expect(actualTextTheme, equals(expectedTextTheme));
   });
 }

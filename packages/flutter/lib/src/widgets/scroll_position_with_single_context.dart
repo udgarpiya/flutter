@@ -2,6 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// @docImport 'page_storage.dart';
+/// @docImport 'scroll_controller.dart';
+/// @docImport 'scroll_view.dart';
+/// @docImport 'scrollable.dart';
+/// @docImport 'viewport.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
@@ -23,6 +30,8 @@ import 'scroll_position.dart';
 /// single [ScrollContext], such as a [Scrollable]. An instance of this class
 /// manages [ScrollActivity] instances, which change what content is visible in
 /// the [Scrollable]'s [Viewport].
+///
+/// {@macro flutter.widgets.scrollPosition.listening}
 ///
 /// See also:
 ///
@@ -145,7 +154,7 @@ class ScrollPositionWithSingleContext extends ScrollPosition implements ScrollAc
         this,
         simulation,
         context.vsync,
-        activity?.shouldIgnorePointer ?? true,
+        shouldIgnorePointer,
       ));
     } else {
       goIdle();
@@ -162,7 +171,6 @@ class ScrollPositionWithSingleContext extends ScrollPosition implements ScrollAc
   @protected
   @visibleForTesting
   void updateUserScrollDirection(ScrollDirection value) {
-    assert(value != null);
     if (userScrollDirection == value) {
       return;
     }
@@ -176,7 +184,7 @@ class ScrollPositionWithSingleContext extends ScrollPosition implements ScrollAc
     required Duration duration,
     required Curve curve,
   }) {
-    if (nearEqual(to, pixels, physics.tolerance.distance)) {
+    if (nearEqual(to, pixels, physics.toleranceFor(this).distance)) {
       // Skip the animation, go straight to the position as we are already close.
       jumpTo(to);
       return Future<void>.value();
@@ -212,7 +220,10 @@ class ScrollPositionWithSingleContext extends ScrollPosition implements ScrollAc
     // If an update is made to pointer scrolling here, consider if the same
     // (or similar) change should be made in
     // _NestedScrollCoordinator.pointerScroll.
-    assert(delta != 0.0);
+    if (delta == 0.0) {
+      goBallistic(0.0);
+      return;
+    }
 
     final double targetPixels =
         math.min(math.max(pixels + delta, minScrollExtent), maxScrollExtent);
@@ -222,8 +233,10 @@ class ScrollPositionWithSingleContext extends ScrollPosition implements ScrollAc
           -delta > 0.0 ? ScrollDirection.forward : ScrollDirection.reverse,
       );
       final double oldPixels = pixels;
-      forcePixels(targetPixels);
+      // Set the notifier before calling force pixels.
+      // This is set to false again after going ballistic below.
       isScrollingNotifier.value = true;
+      forcePixels(targetPixels);
       didStartScroll();
       didUpdateScrollPositionBy(pixels - oldPixels);
       didEndScroll();

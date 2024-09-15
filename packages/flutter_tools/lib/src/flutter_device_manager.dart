@@ -11,6 +11,7 @@ import 'artifacts.dart';
 import 'base/file_system.dart';
 import 'base/os.dart';
 import 'base/platform.dart';
+import 'base/user_messages.dart';
 import 'custom_devices/custom_device.dart';
 import 'custom_devices/custom_devices_config.dart';
 import 'device.dart';
@@ -26,10 +27,11 @@ import 'macos/macos_device.dart';
 import 'macos/macos_ipad_device.dart';
 import 'macos/macos_workflow.dart';
 import 'macos/xcdevice.dart';
+import 'native_assets.dart';
+import 'preview_device.dart';
 import 'tester/flutter_tester.dart';
 import 'version.dart';
 import 'web/web_device.dart';
-
 import 'windows/windows_device.dart';
 import 'windows/windows_workflow.dart';
 
@@ -51,11 +53,11 @@ class FlutterDeviceManager extends DeviceManager {
     required Artifacts artifacts,
     required MacOSWorkflow macOSWorkflow,
     required FuchsiaSdk fuchsiaSdk,
-    required super.userMessages,
+    required UserMessages userMessages,
     required OperatingSystemUtils operatingSystemUtils,
     required WindowsWorkflow windowsWorkflow,
-    required super.terminal,
     required CustomDevicesConfig customDevicesConfig,
+    required TestCompilerNativeAssetsBuilder? nativeAssetsBuilder,
   }) : deviceDiscoverers =  <DeviceDiscovery>[
     AndroidDevices(
       logger: logger,
@@ -87,7 +89,7 @@ class FlutterDeviceManager extends DeviceManager {
       processManager: processManager,
       logger: logger,
       artifacts: artifacts,
-      operatingSystemUtils: operatingSystemUtils,
+      nativeAssetsBuilder: nativeAssetsBuilder,
     ),
     MacOSDevices(
       processManager: processManager,
@@ -104,6 +106,14 @@ class FlutterDeviceManager extends DeviceManager {
       platform: platform,
       fileSystem: fileSystem,
       operatingSystemUtils: operatingSystemUtils,
+    ),
+    PreviewDeviceDiscovery(
+      platform: platform,
+      artifacts: artifacts,
+      fileSystem: fileSystem,
+      logger: logger,
+      processManager: processManager,
+      featureFlags: featureFlags,
     ),
     LinuxDevices(
       platform: platform,
